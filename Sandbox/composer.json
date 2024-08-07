@@ -1,0 +1,18 @@
+{
+    "name": "zonos/sandbox",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Zonos\\Sandbox\\": "src/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../."
+        }
+    ],
+    "require": {
+        "zonos/zonos-sdk": "@dev"
+    }
+}
