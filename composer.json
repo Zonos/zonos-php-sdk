@@ -1,0 +1,12 @@
+{
+    "name": "zonos/zonos-sdk",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Zonos\\ZonosSdk\\": "src/"
+        }
+    },
+    "require": {
+        "saloonphp/saloon": "^3.0"
+    }
+}
