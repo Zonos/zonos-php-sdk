@@ -1,9 +1,9 @@
 {
-    "name": "zonos/sandbox",
+    "name": "zonos/woocommerce-plugin",
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Zonos\\Sandbox\\": "src/"
+            "Zonos\\WoocommercePlugin\\": "/"
         }
     },
     "repositories": [
