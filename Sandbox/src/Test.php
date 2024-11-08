@@ -5,7 +5,7 @@ use Zonos\ZonosSdk\Connectors\Enums\ZonosConnectorType;
 use Zonos\ZonosSdk\Connectors\ZonosConnectorFactory;
 use Zonos\ZonosSdk\Requests\Inputs\CheckoutSettingUpdateInput;
 
-$sdk = ZonosConnectorFactory::createConnector( ZonosConnectorType::Wordpress, '','');
+$sdk = ZonosConnectorFactory::createConnector( ZonosConnectorType::Wordpress, '', 'https://internal-graph.dgs.dev.zdops.net');
 
 $thing = CheckoutSettingUpdateInput::fromArray(['successRedirectUrl' => 'https://www.zonos.com/']);
 

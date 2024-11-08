@@ -3,16 +3,11 @@
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Zonos\\Sandbox\\": "src/"
+            "Zonos\\Sandbox\\": "src/",
+            "Zonos\\ZonosSdk\\": "../zonos-wordpress-plugin/vendor-custom/zonos-php-sdk/src/"
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../zonos-php-sdk"
-        }
-    ],
     "require": {
-        "zonos/zonos-sdk": "@dev"
+        "saloonphp/saloon": "^3.0"
     }
 }

@@ -32,5 +32,6 @@ define( "WPS_DIRECTORY_BASENAME", plugin_basename( WPS_FILE ) );
 define( "WPS_DIRECTORY_PATH", plugin_dir_path( WPS_FILE ) );
 define( "WPS_DIRECTORY_URL", plugins_url( null, WPS_FILE ) );
 
+require_once( WPS_DIRECTORY . '/vendor/autoload.php' );
 // Require the main class file
-require_once( WPS_DIRECTORY . '/include/main-class.php' );
+require_once(WPS_DIRECTORY . '/include/main-class.php');
