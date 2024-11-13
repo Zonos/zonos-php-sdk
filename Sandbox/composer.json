@@ -1,13 +1,13 @@
 {
-    "name": "zonos/sandbox",
-    "type": "project",
-    "autoload": {
-        "psr-4": {
-            "Zonos\\Sandbox\\": "src/",
-            "Zonos\\ZonosSdk\\": "../zonos-wordpress-plugin/vendor-custom/zonos-php-sdk/src/"
-        }
-    },
-    "require": {
-        "saloonphp/saloon": "^3.0"
+  "name": "zonos/sandbox",
+  "type": "project",
+  "autoload": {
+    "psr-4": {
+      "Zonos\\Sandbox\\": "src/",
+      "Zonos\\ZonosSdk\\": "../zonos-for-woocommerce/vendor-custom/zonos-php-sdk/src/"
     }
+  },
+  "require": {
+    "saloonphp/saloon": "^3.0"
+  }
 }

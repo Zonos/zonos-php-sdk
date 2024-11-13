@@ -16,6 +16,8 @@ services:
     expose:
       - 3306
       - 33060
+    ports:
+      - 3306:3306
   wordpress:
     image: wordpress:latest
     volumes:

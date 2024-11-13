@@ -1,0 +1,13 @@
+{
+  "name": "zonos/zonos-for-woocommerce",
+  "type": "project",
+  "autoload": {
+    "psr-4": {
+      "Zonos\\WoocommercePlugin\\": "/includes/",
+      "Zonos\\ZonosSdk\\": "/vendor-custom/zonos-php-sdk/src/"
+    }
+  },
+  "require": {
+    "saloonphp/saloon": "^3.0"
+  }
+}
