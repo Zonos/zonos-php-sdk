@@ -16,7 +16,7 @@ class ZFW_i18n
     load_plugin_textdomain(
       ZFW_DIRECTORY,
       false,
-      WPS_DIRECTORY_BASENAME . '/languages/'
+      ZFW_DIRECTORY_BASENAME . '/languages/'
     );
   }
 }

@@ -9,11 +9,14 @@ class ZFW_Main
 {
   public $admin;
 
+  public $public;
+
   public function __construct()
   {
     $this->load_dependencies();
     $this->set_locale();
     $this->define_admin_hooks();
+    $this->define_public_hooks();
   }
 
   private function load_dependencies()
@@ -36,5 +39,11 @@ class ZFW_Main
     $this->admin = new ZFW_Admin();
     add_action('admin_menu', array($this->admin, 'create_admin_menu'));
     add_action('admin_init', array($this->admin, 'plugin_register_settings'));
+  }
+
+  private function define_public_hooks()
+  {
+    $this->public = new ZFW_Public();
+    add_action('wp_enqueue_scripts', array($this->public, 'load_zonos_elements_script'));
   }
 }

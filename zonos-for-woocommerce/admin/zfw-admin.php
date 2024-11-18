@@ -88,19 +88,8 @@ class ZFW_Admin
   function plugin_settings_page()
   {
     if (!current_user_can('manage_options')) return;
-    ?>
-      <div class="wrap">
-          <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-          <form action="options.php" method="post">
-            <?php
-            settings_fields('zonos_settings');
-            do_settings_sections('page_zonos_setting');
-            submit_button('Save Settings');
-            ?>
-          </form>
-      </div>
-    <?php
 
+    include_once ZFW_DIRECTORY_PATH . 'admin/templates/zfw-plugin-settings-page.php';
   }
 
   /**
@@ -109,11 +98,14 @@ class ZFW_Admin
    */
   function input_store_id()
   {
-    $setting = get_option('zonos_store_id');
-    ?>
-      <input type="text" name="zonos_store_id"
-             value="<?php echo isset($setting) ? esc_attr($setting) : ''; ?>">
-    <?php
+    $args = array(
+      'name' => 'zonos_store_id',
+      'value' => get_option('zonos_store_id', ''),
+      'type' => 'text',
+      'placeholder' => 'Enter your Store ID',
+    );
+
+    include_once ZFW_DIRECTORY_PATH . 'admin/partials/zfw-text-input.php';
   }
 
 
@@ -123,10 +115,13 @@ class ZFW_Admin
    */
   function input_api_key()
   {
-    $setting = get_option('zonos_api_key');
-    ?>
-      <input type="text" name="zonos_api_key"
-             value="<?php echo isset($setting) ? esc_attr($setting) : ''; ?>">
-    <?php
+    $args = array(
+      'name' => 'zonos_api_key',
+      'value' => get_option('zonos_api_key', ''),
+      'type' => 'text',
+      'placeholder' => 'Enter your API Key', // TODO: Create translation
+    );
+
+    include_once ZFW_DIRECTORY_PATH . 'admin/partials/zfw-text-input.php';
   }
 }

@@ -32,26 +32,26 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin Defines
+define('ZFW_VERSION', '1.0.0');
 define('ZFW_FILE', __FILE__);
 define('ZFW_DIRECTORY', dirname(ZFW_FILE));
-define('ZFW_PATH', plugin_dir_path(ZFW_FILE));
 define('ZFW_DIRECTORY_PATH', plugin_dir_path(ZFW_FILE));
-define('WPS_DIRECTORY_BASENAME', plugin_basename(ZFW_FILE));
-
+define('ZFW_DIRECTORY_URL', plugin_dir_url(ZFW_FILE));
+define('ZFW_DIRECTORY_BASENAME', plugin_basename(ZFW_FILE));
 function activate_zonos_for_woocommerce()
 {
-  require_once ZFW_PATH . 'includes/zfw-activator.php';
+  require_once ZFW_DIRECTORY_PATH . 'includes/zfw-activator.php';
   ZFW_Activator::activate();
 }
 
 function deactivate_zonos_for_woocommerce()
 {
-  require_once ZFW_PATH . 'includes/zfw-deactivator.php';
+  require_once ZFW_DIRECTORY_PATH . 'includes/zfw-deactivator.php';
   ZFW_Deactivator::deactivate();
 }
 
 register_activation_hook(ZFW_FILE, 'activate_zonos_for_woocommerce');
 register_deactivation_hook(ZFW_FILE, 'deactivate_zonos_for_woocommerce');
 
-require_once ZFW_PATH . 'includes/zfw-main.php';
+require_once ZFW_DIRECTORY_PATH . 'includes/zfw-main.php';
 new ZFW_Main;
