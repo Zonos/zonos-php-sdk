@@ -8,6 +8,7 @@
  * - $args['value'] (string): Current value of the input field.
  * - $args['placeholder'] (string): Placeholder text (optional).
  * - $args['class'] (string): Additional classes for the input field (optional).
+ * - $args['required'] (boolean): Flag to denote if the input is required (optional).
  */
 ?>
 
@@ -17,4 +18,5 @@
         value="<?php echo esc_attr($args['value'] ?? ''); ?>"
         class="<?php echo esc_attr($args['class'] ?? 'regular-text'); ?>"
         placeholder="<?php echo esc_attr($args['placeholder'] ?? ''); ?>"
+	    <?php echo $args['required'] ? 'required' : ''; ?>
 />

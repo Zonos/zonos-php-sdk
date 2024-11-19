@@ -40,46 +40,185 @@ class ZFW_Admin
    */
   function plugin_register_settings()
   {
-    add_settings_section(
-      'zonos_settings_section_integrations',
-      null,
-      null,
-      'page_zonos_setting'
-    );
-
-    add_settings_field(
-      'zonos_store_id',
-      'Store ID',
-      array($this, 'input_store_id'),
-      'page_zonos_setting',
-      'zonos_settings_section_integrations'
-    );
-
-    add_settings_field(
-      'zonos_api_key',
-      'API Key',
-      array($this, 'input_api_key'),
-      'page_zonos_setting',
-      'zonos_settings_section_integrations'
-    );
-
-    register_setting(
-      'zonos_settings',
-      'zonos_store_id',
-      array(
-        'type' => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-      )
-    );
-    register_setting(
-      'zonos_settings',
-      'zonos_api_key',
-      array(
-        'type' => 'string',
-        'sanitize_callback' => 'sanitize_text_field',
-      )
-    );
+    $globalSettings = [
+        'zonos_store_id' => [
+            'name' => 'Store ID',
+            'type' => 'text',
+        ],
+        'zonos_api_key' => [
+            'name' => 'API Key',
+            'type' => 'text',
+        ],
+    ];
+    $WCProductValues = [
+        'name',
+        'description',
+        'short_description',
+        'variation_id',
+        'product_id',
+        'price',
+        'sku',
+        'length',
+        'width',
+        'height',
+        'weight',
+        'image_id',
+        'product_tag',
+        'product_brand',
+        'product_cat',
+        'custom',
+    ];
+    $productVariables = [
+        'zonos_item_description' => [
+            'name' => 'Description',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_name' => [
+            'name' => 'Name',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_item_description_long' => [
+            'name' => 'Long Description',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_product_id' => [
+            'name' => 'Product ID',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_price' => [
+            'name' => 'Price',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_sku' => [
+            'name' => 'Sku',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_length' => [
+            'name' => 'Length',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_width' => [
+            'name' => 'Width',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_height' => [
+            'name' => 'Height',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_weight' => [
+            'name' => 'Weight',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_image' => [
+            'name' => 'Image',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_hs_code' => [
+            'name' => 'HS Code',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_brand' => [
+            'name' => 'Brand',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_category' => [
+            'name' => 'Category',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCProductValues,
+        ],
+        'zonos_country' => [
+            'name' => 'Country',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+        'zonos_url' => [
+            'name' => 'Url',
+            'type' => 'dropdown',
+            'required' => false,
+            'options' => $WCProductValues,
+        ],
+    ];
+    $WCCouponValues = [
+        'code',
+        'amount',
+        'custom',
+    ];
+    $couponVariables = [
+        'zonos_coupon_name' => [
+            'name' => 'Name',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCCouponValues,
+        ],
+        'zonos_coupon_price' => [
+            'name' => 'Amount',
+            'type' => 'dropdown',
+            'required' => true,
+            'options' => $WCCouponValues,
+        ]
+    ];
+    $this->add_new_settings_section('zonos_global_settings', 'Global Settings', $globalSettings);
+    $this->add_new_settings_section('zonos_product_settings', 'Product Settings', $productVariables);
+    $this->add_new_settings_section('zonos_coupon_settings', 'Coupon Settings', $couponVariables);
+    $this->add_custom_select_value();
   }
+
+  function add_custom_select_value()
+	{
+        ?>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const items = document.querySelectorAll('.wrap select');
+                    if (items) {
+                        for (let i = 0; i < items.length; i++) {
+                            const customInput = document.querySelector(`.wrap input#${items[i].id}`);
+
+                            items[i].addEventListener('change', function() {
+                                if (items[i].value === 'custom' && customInput.classList.contains('hidden')) {
+                                    items[i].name = `${items[i].id}-ignore`;
+                                    customInput.disabled = false;
+                                    customInput.classList.remove('hidden');
+                                } else if (!customInput.classList.contains('hidden')) {
+                                    items[i].name = items[i].id;
+                                    customInput.disabled = true;
+                                    customInput.value = '';
+                                    customInput.classList.add('hidden');
+                                }
+                            });
+                        }
+                    }
+                });
+            </script>
+        <?php
+    }
 
   /**
    * Plugin main settings page
@@ -88,40 +227,63 @@ class ZFW_Admin
   function plugin_settings_page()
   {
     if (!current_user_can('manage_options')) return;
+//    wp_register_style( 'custom-style', plugins_url('css/bootstrap.css', __FILE__) );
+//    wp_enqueue_style( 'custom-style' );
 
     include_once ZFW_DIRECTORY_PATH . 'admin/templates/zfw-plugin-settings-page.php';
   }
 
-  /**
-   * Input for the store id in the main settings page
-   * @method input_store_id
-   */
-  function input_store_id()
+  function add_new_settings_section($sectionId, $sectionName, $variables)
+	{
+        add_settings_section(
+            $sectionId,
+            $sectionName,
+            null,
+            'page_zonos_setting'
+        );
+
+        foreach ($variables as $id => $args) {
+            $name = $args['name'];
+            $type = $args['type'];
+            $options = $args['options'] ?? [];
+            $required = $args['required'] ?? false;
+            $requiredLabel = $required ? ' *' : '';
+
+            add_settings_field(
+                $id,
+                $name.$requiredLabel,
+                array($this, 'settings_field_input'),
+                'page_zonos_setting',
+                $sectionId,
+                array(
+                    'name' => $id,
+                    'placeholder' => $type === 'input' ? 'Enter value for '.$name : '',
+                    'value' => get_option($id ?? ''),
+                    'input_type' => $type,
+                    'options' => $options,
+                    'required' => $required,
+                  )
+            );
+
+            register_setting(
+                'zonos_settings',
+                $id,
+                array(
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                )
+            );
+        }
+    }
+
+  function settings_field_input($args)
   {
-    $args = array(
-      'name' => 'zonos_store_id',
-      'value' => get_option('zonos_store_id', ''),
-      'type' => 'text',
-      'placeholder' => 'Enter your Store ID',
-    );
+    $input_type = $args['input_type'];
 
-    include_once ZFW_DIRECTORY_PATH . 'admin/partials/zfw-text-input.php';
-  }
-
-
-  /**
-   * Input for the store id in the main settings page
-   * @method input_api_key
-   */
-  function input_api_key()
-  {
-    $args = array(
-      'name' => 'zonos_api_key',
-      'value' => get_option('zonos_api_key', ''),
-      'type' => 'text',
-      'placeholder' => 'Enter your API Key', // TODO: Create translation
-    );
-
-    include_once ZFW_DIRECTORY_PATH . 'admin/partials/zfw-text-input.php';
+    if ($input_type == 'text') {
+        include ZFW_DIRECTORY_PATH . 'admin/partials/zfw-text-input.php';
+    } else {
+        include ZFW_DIRECTORY_PATH . 'admin/partials/zfw-select-input.php';
+    }
   }
 }

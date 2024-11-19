@@ -1,0 +1,12 @@
+.wrap th {
+    padding: 10px;
+}
+
+.wrap td {
+    padding: 0;
+}
+
+.wrap select,
+.wrap input {
+    width: 220px;
+}
