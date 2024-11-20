@@ -14,7 +14,7 @@ class ZFW_i18n
   public function load_plugin_textdomain()
   {
     load_plugin_textdomain(
-      ZFW_DIRECTORY,
+      'zonos_for_woocommerce',
       false,
       ZFW_DIRECTORY_BASENAME . '/languages/'
     );

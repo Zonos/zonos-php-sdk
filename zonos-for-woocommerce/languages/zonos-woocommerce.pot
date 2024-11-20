@@ -1,0 +1,195 @@
+# Copyright (C) 2024 Zonos
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Zonos for Woocommerce 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/zonos_for_woocommerce\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2024-11-20T07:17:15+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: zonos_for_woocommerce\n"
+
+#. Plugin Name of the plugin
+#: zonos-for-woocommerce.php
+msgid "Zonos for Woocommerce"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: zonos-for-woocommerce.php
+msgid "https://example.com/plugin-name"
+msgstr ""
+
+#. Description of the plugin
+#: zonos-for-woocommerce.php
+msgid "Description of the plugin."
+msgstr ""
+
+#. Author of the plugin
+#: zonos-for-woocommerce.php
+#: admin/zfw-admin.php:19
+msgid "Zonos"
+msgstr ""
+
+#. Author URI of the plugin
+#: zonos-for-woocommerce.php
+msgid "https://zonos.com/"
+msgstr ""
+
+#: admin/zfw-admin.php:18
+msgid "Zonos For Woocommerce"
+msgstr ""
+
+#: admin/zfw-admin.php:29
+msgid "Zonos Base Configurations"
+msgstr ""
+
+#: admin/zfw-admin.php:30
+msgid "Zonos Settings"
+msgstr ""
+
+#: admin/zfw-admin.php:38
+msgid "Zonos Hello Configurations"
+msgstr ""
+
+#: admin/zfw-admin.php:39
+msgid "Zonos Hello"
+msgstr ""
+
+#: admin/zfw-admin.php:67
+#: admin/zfw-admin.php:84
+msgid "Save Settings"
+msgstr ""
+
+#: admin/zfw-admin.php:68
+#: admin/zfw-admin.php:85
+#: admin/zfw-admin.php:134
+#: admin/zfw-admin.php:159
+#: admin/zfw-admin.php:198
+#: admin/zfw-admin.php:223
+#: admin/zfw-admin.php:246
+#: admin/zfw-admin.php:273
+#: admin/zfw-admin.php:302
+#: admin/zfw-admin.php:325
+#: admin/zfw-admin.php:354
+#: admin/zfw-admin.php:379
+#: admin/zfw-admin.php:404
+#: admin/zfw-admin.php:429
+#: admin/zfw-admin.php:455
+msgid "Some filler text"
+msgstr ""
+
+#: admin/zfw-admin.php:116
+msgid "Configurations for Zonos Integration"
+msgstr ""
+
+#: admin/zfw-admin.php:124
+msgid "API Key"
+msgstr ""
+
+#: admin/zfw-admin.php:133
+msgid "Enter your API Key"
+msgstr ""
+
+#: admin/zfw-admin.php:149
+msgid "Store ID"
+msgstr ""
+
+#: admin/zfw-admin.php:158
+msgid "Enter your Store ID"
+msgstr ""
+
+#: admin/zfw-admin.php:180
+msgid "Configurations for Zonos Hello"
+msgstr ""
+
+#: admin/zfw-admin.php:188
+msgid "Placement Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:197
+msgid "Example: #zonos-pop-up"
+msgstr ""
+
+#: admin/zfw-admin.php:213
+msgid "Cart URL Pattern"
+msgstr ""
+
+#: admin/zfw-admin.php:222
+msgid "Example: https://www.zonos.com/cart"
+msgstr ""
+
+#: admin/zfw-admin.php:238
+msgid "Country Override Behavior"
+msgstr ""
+
+#: admin/zfw-admin.php:248
+msgid "URL_PARAM"
+msgstr ""
+
+#: admin/zfw-admin.php:249
+msgid "SESSION"
+msgstr ""
+
+#: admin/zfw-admin.php:265
+#: admin/zfw-admin.php:317
+msgid "Currency Behavior"
+msgstr ""
+
+#: admin/zfw-admin.php:275
+#: admin/zfw-admin.php:327
+msgid "DISABLED"
+msgstr ""
+
+#: admin/zfw-admin.php:276
+#: admin/zfw-admin.php:328
+msgid "ENABLED"
+msgstr ""
+
+#: admin/zfw-admin.php:292
+msgid "Product Title Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:301
+msgid "Example: .title"
+msgstr ""
+
+#: admin/zfw-admin.php:344
+msgid "Product Descriptor Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:353
+msgid "Example: .description"
+msgstr ""
+
+#: admin/zfw-admin.php:369
+msgid "Currency Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:378
+msgid "Example: #price, .price"
+msgstr ""
+
+#: admin/zfw-admin.php:394
+msgid "Product Price Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:403
+msgid "Example: .price"
+msgstr ""
+
+#: admin/zfw-admin.php:419
+msgid "Add To Cart Element Selector"
+msgstr ""
+
+#: admin/zfw-admin.php:428
+msgid "Example: .add-to-cart"
+msgstr ""
+
+#: admin/zfw-admin.php:444
+msgid "Automatic Pop-Up"
+msgstr ""
