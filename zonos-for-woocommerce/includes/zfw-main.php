@@ -39,6 +39,7 @@ class ZFW_Main
     $this->admin = new ZFW_Admin();
     add_action('admin_menu', array($this->admin, 'create_admin_menu'));
     add_action('admin_init', array($this->admin, 'plugin_register_settings'));
+    add_action('admin_notices', array($this->admin, 'add_settings_errors'));
   }
 
   private function define_public_hooks()

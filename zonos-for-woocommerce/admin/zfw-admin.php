@@ -106,6 +106,15 @@ class ZFW_Admin
   }
 
   /**
+   * Adds form feedback errors to admin pages
+   * @method add_settings_errors
+   */
+  function add_settings_errors()
+  {
+    settings_errors();
+  }
+
+  /**
    * Registers Zonos Main Configurations
    * @method register_zonos_main_config
    */
