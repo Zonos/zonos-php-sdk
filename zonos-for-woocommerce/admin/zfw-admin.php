@@ -9,6 +9,21 @@ class ZFW_Admin
 {
 
   /**
+   * Loads Zonos Admin Styles
+   *
+   * @method load_zonos_elements_script
+   */
+  function load_admin_styles()
+  {
+    wp_enqueue_style(
+      'zfw_admin_styles',
+      ZFW_DIRECTORY_URL . 'admin/css/zfw_admin_styles.css',
+      null,
+      ZFW_VERSION,
+    );
+  }
+
+  /**
    * Create the admin Menu
    * @method create_admin_menu
    */
@@ -53,7 +68,6 @@ class ZFW_Admin
     $this->register_zonos_hello_config();
     $this->register_zonos_product_config();
     $this->register_zonos_coupon_config();
-    $this->add_custom_select_value();
   }
 
   /**
@@ -63,6 +77,14 @@ class ZFW_Admin
   function generate_zonos_main_settings_page()
   {
     if (!current_user_can('manage_options')) return;
+
+
+    wp_enqueue_script(
+      'zfw_admin_selector_listener',
+      ZFW_DIRECTORY_URL . 'admin/js/zfw_selector_listener.js',
+      null,
+      ZFW_VERSION,
+    );
 
     $arguments = array(
       'settings_fields' => 'zonos_main_settings',
@@ -602,15 +624,15 @@ class ZFW_Admin
     foreach ($productVariables as $id => $args) {
       add_settings_field(
         $id,
-        __($args['name'].($args['required'] ? ' *' : ''), 'zonos_for_woocommerce'),
+        __($args['name'] . ($args['required'] ? ' *' : ''), 'zonos_for_woocommerce'),
         array($this, $args['type']),
         'zonos_main_settings_page',
         'zonos_product_settings_section',
         array(
-          'id' => 'input_'.$id,
+          'id' => 'input_' . $id,
           'name' => $id,
           'value' => get_option($id, ''),
-          'placeholder' => __('Enter your '.$args['name'], 'zonos_for_woocommerce'),
+          'placeholder' => __('Enter your ' . $args['name'], 'zonos_for_woocommerce'),
           'description' => __('Some filler text', 'zonos_for_woocommerce'),
           'options' => $args['options'],
           'required' => $args['required']
@@ -669,10 +691,10 @@ class ZFW_Admin
         'zonos_main_settings_page',
         'zonos_coupon_settings_section',
         array(
-          'id' => 'input_'.$id,
-          'name' => $id.($args['required'] ? ' *' : ''),
+          'id' => 'input_' . $id,
+          'name' => $id . ($args['required'] ? ' *' : ''),
           'value' => get_option($id, ''),
-          'placeholder' => __('Enter your '.$args['name'], 'zonos_for_woocommerce'),
+          'placeholder' => __('Enter your ' . $args['name'], 'zonos_for_woocommerce'),
           'description' => __('Some filler text', 'zonos_for_woocommerce'),
           'options' => $args['options'],
           'required' => $args['required']
@@ -687,38 +709,5 @@ class ZFW_Admin
         )
       );
     }
-  }
-
-  /**
-   * Add JS logic to handle the input custom values
-   * @method add_custom_select_value
-   */
-  function add_custom_select_value()
-  {
-    ?>
-      <script>
-          document.addEventListener("DOMContentLoaded", function() {
-              const items = document.querySelectorAll('.wrap select');
-              if (items) {
-                  for (let i = 0; i < items.length; i++) {
-                      const customInput = document.querySelector(`.wrap input#${items[i].id}`);
-
-                      items[i].addEventListener('change', function() {
-                          if (items[i].value === 'custom' && customInput.classList.contains('hidden')) {
-                              items[i].name = `${items[i].id}-ignore`;
-                              customInput.disabled = false;
-                              customInput.classList.remove('hidden');
-                          } else if (!customInput.classList.contains('hidden')) {
-                              items[i].name = items[i].id;
-                              customInput.disabled = true;
-                              customInput.value = '';
-                              customInput.classList.add('hidden');
-                          }
-                      });
-                  }
-              }
-          });
-      </script>
-    <?php
   }
 }

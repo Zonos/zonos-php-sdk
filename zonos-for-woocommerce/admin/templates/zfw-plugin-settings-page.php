@@ -8,27 +8,7 @@
  *  - $arguments['submit_button'] (string): Translation text for the submit button.
  */
 ?>
-<style>
-    .wrap.settings th {
-        padding: 10px;
-    }
-
-    .wrap.settings td {
-        padding: 0;
-    }
-
-    .wrap.settings select,
-    .wrap.settings input {
-        width: 240px;
-    }
-    .hidden {
-        display: none;
-    }
-    .selector-custom {
-        margin-top: -10px;
-    }
-</style>
-<div class="wrap settings">
+<div class="wrap">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
   <?php if (!empty($arguments['description'])) : ?>
