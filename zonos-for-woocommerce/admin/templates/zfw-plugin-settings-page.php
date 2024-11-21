@@ -19,10 +19,13 @@
 
     .wrap.settings select,
     .wrap.settings input {
-        width: 220px;
+        width: 240px;
     }
     .hidden {
         display: none;
+    }
+    .selector-custom {
+        margin-top: -10px;
     }
 </style>
 <div class="wrap settings">

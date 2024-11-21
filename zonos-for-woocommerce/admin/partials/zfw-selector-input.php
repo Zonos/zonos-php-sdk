@@ -15,13 +15,26 @@
 <select
         id="<?php echo esc_attr($arguments['id']); ?>"
         name="<?php echo esc_attr($arguments['name']); ?>"
-        class="<?php echo esc_attr($arguments['class'] ?? 'regular-text'); ?>">
-  <?php foreach ($arguments['options'] as $value => $label) : ?>
+        class="<?php echo esc_attr($arguments['class'] ?? 'regular-text'); ?>"
+        <?php echo $arguments['required'] ? 'required' : ''; ?>>
+  <?php if ($arguments['value'] && !in_array($arguments['value'], $arguments['options'])) : ?>
+    <option value="<?php echo esc_attr($arguments['value']); ?>" selected><?php echo esc_attr($arguments['value']); ?></option>
+  <?php endif; ?>
+  <?php foreach ($arguments['options'] as $label => $value) : ?>
       <option value="<?php echo esc_attr($value); ?>" <?php selected($arguments['value'], $value); ?>>
         <?php echo esc_html($label); ?>
       </option>
   <?php endforeach; ?>
 </select>
+<input
+        class="hidden selector-custom"
+        type="text"
+        placeholder="<?php echo esc_attr($arguments['placeholder']); ?>"
+        name="<?php echo esc_attr($arguments['name']); ?>"
+        id="<?php echo esc_attr($arguments['id'] ?? ''); ?>"
+        required
+        disabled
+>
 <?php if (!empty($arguments['label'])) : ?>
     <label for="<?php echo esc_attr($arguments['id']); ?>">
       <?php echo esc_html($arguments['label']); ?>

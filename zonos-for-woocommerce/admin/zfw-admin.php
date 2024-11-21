@@ -51,6 +51,9 @@ class ZFW_Admin
   {
     $this->register_zonos_main_config();
     $this->register_zonos_hello_config();
+    $this->register_zonos_product_config();
+    $this->register_zonos_coupon_config();
+    $this->add_custom_select_value();
   }
 
   /**
@@ -463,5 +466,259 @@ class ZFW_Admin
         'sanitize_callback' => 'sanitize_text_field',
       )
     );
+  }
+
+  /**
+   * Registers Zonos Product Mapping Configurations
+   * @method register_zonos_product_config
+   */
+  function register_zonos_product_config()
+  {
+    add_settings_section(
+      'zonos_product_settings_section',
+      __('Product Mapping Configurations for Zonos Integration', 'zonos_for_woocommerce'),
+      null,
+      'zonos_main_settings_page'
+    );
+
+    $WCProductValues = [
+      'Select WooCommerce Variable' => '',
+      'name' => 'name',
+      'description' => 'description',
+      'short_description' => 'short_description',
+      'variation_id' => 'variation_id',
+      'product_id' => 'product_id',
+      'price' => 'price',
+      'sku' => 'sku',
+      'length' => 'length',
+      'width' => 'width',
+      'height' => 'height',
+      'weight' => 'weight',
+      'image_id' => 'image_id',
+      'product_tag' => 'product_tag',
+      'product_brand' => 'product_brand',
+      'product_cat' => 'product_cat',
+      'custom' => 'custom',
+    ];
+    $productVariables = [
+      'zonos_item_description' => [
+        'name' => 'Description',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_name' => [
+        'name' => 'Name',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_item_description_long' => [
+        'name' => 'Long Description',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_product_id' => [
+        'name' => 'Product ID',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_price' => [
+        'name' => 'Price',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_sku' => [
+        'name' => 'Sku',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_length' => [
+        'name' => 'Length',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_width' => [
+        'name' => 'Width',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_height' => [
+        'name' => 'Height',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_weight' => [
+        'name' => 'Weight',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_image' => [
+        'name' => 'Image',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_hs_code' => [
+        'name' => 'HS Code',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_brand' => [
+        'name' => 'Brand',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_category' => [
+        'name' => 'Category',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_country' => [
+        'name' => 'Country',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_url' => [
+        'name' => 'Url',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+    ];
+
+    foreach ($productVariables as $id => $args) {
+      add_settings_field(
+        $id,
+        __($args['name'].($args['required'] ? ' *' : ''), 'zonos_for_woocommerce'),
+        array($this, $args['type']),
+        'zonos_main_settings_page',
+        'zonos_product_settings_section',
+        array(
+          'id' => 'input_'.$id,
+          'name' => $id,
+          'value' => get_option($id, ''),
+          'placeholder' => __('Enter your '.$args['name'], 'zonos_for_woocommerce'),
+          'description' => __('Some filler text', 'zonos_for_woocommerce'),
+          'options' => $args['options'],
+          'required' => $args['required']
+        )
+      );
+      register_setting(
+        'zonos_main_settings',
+        $id,
+        array(
+          'type' => 'string',
+          'sanitize_callback' => 'sanitize_text_field',
+        )
+      );
+    }
+  }
+
+  /**
+   * Registers Zonos Coupon Mapping Configurations
+   * @method register_zonos_coupon_config
+   */
+  function register_zonos_coupon_config()
+  {
+    add_settings_section(
+      'zonos_coupon_settings_section',
+      __('Coupon Mapping Configurations for Zonos Integration', 'zonos_for_woocommerce'),
+      null,
+      'zonos_main_settings_page'
+    );
+
+    $WCCouponValues = [
+      'Select WooCommerce Variable' => '',
+      'code' => 'code',
+      'amount' => 'amount',
+      'custom' => 'custom',
+    ];
+    $couponVariables = [
+      'zonos_coupon_name' => [
+        'name' => 'Name',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCCouponValues,
+      ],
+      'zonos_coupon_price' => [
+        'name' => 'Amount',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCCouponValues,
+      ]
+    ];
+
+    foreach ($couponVariables as $id => $args) {
+      add_settings_field(
+        $id,
+        __($args['name'], 'zonos_for_woocommerce'),
+        array($this, $args['type']),
+        'zonos_main_settings_page',
+        'zonos_coupon_settings_section',
+        array(
+          'id' => 'input_'.$id,
+          'name' => $id.($args['required'] ? ' *' : ''),
+          'value' => get_option($id, ''),
+          'placeholder' => __('Enter your '.$args['name'], 'zonos_for_woocommerce'),
+          'description' => __('Some filler text', 'zonos_for_woocommerce'),
+          'options' => $args['options'],
+          'required' => $args['required']
+        )
+      );
+      register_setting(
+        'zonos_main_settings',
+        $id,
+        array(
+          'type' => 'string',
+          'sanitize_callback' => 'sanitize_text_field',
+        )
+      );
+    }
+  }
+
+  /**
+   * Add JS logic to handle the input custom values
+   * @method add_custom_select_value
+   */
+  function add_custom_select_value()
+  {
+    ?>
+      <script>
+          document.addEventListener("DOMContentLoaded", function() {
+              const items = document.querySelectorAll('.wrap select');
+              if (items) {
+                  for (let i = 0; i < items.length; i++) {
+                      const customInput = document.querySelector(`.wrap input#${items[i].id}`);
+
+                      items[i].addEventListener('change', function() {
+                          if (items[i].value === 'custom' && customInput.classList.contains('hidden')) {
+                              items[i].name = `${items[i].id}-ignore`;
+                              customInput.disabled = false;
+                              customInput.classList.remove('hidden');
+                          } else if (!customInput.classList.contains('hidden')) {
+                              items[i].name = items[i].id;
+                              customInput.disabled = true;
+                              customInput.value = '';
+                              customInput.classList.add('hidden');
+                          }
+                      });
+                  }
+              }
+          });
+      </script>
+    <?php
   }
 }
