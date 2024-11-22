@@ -11,7 +11,7 @@
                 ...(args?.currencyElementSelector && {currencyElementSelector: args.currencyElementSelector}),
                 ...(args?.desktopLocation && {desktopLocation: args.desktopLocation}),
                 ...(args?.productAddToCartElementSelector && {productAddToCartElementSelector: args.productAddToCartElementSelector}),
-                ...(args?.productDescriptionElementSelector && {productDescriptionElementSelector: args.productDescriptionSelector}),
+                ...(args?.productDescriptionElementSelector && {productDescriptionElementSelector: args.productDescriptionElementSelector}),
                 ...(args?.productPriceElementSelector && {productPriceElementSelector: args.productPriceElementSelector}),
                 ...(args?.productTitleElementSelector && {productTitleElementSelector: args.productTitleElementSelector}),
                 ...(args?.automaticPopUp && {onInitSuccess: () => Zonos.openHelloDialog()})
