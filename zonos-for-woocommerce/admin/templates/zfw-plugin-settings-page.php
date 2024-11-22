@@ -8,7 +8,6 @@
  *  - $arguments['submit_button'] (string): Translation text for the submit button.
  */
 ?>
-
 <div class="wrap">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 

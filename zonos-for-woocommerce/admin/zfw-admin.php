@@ -9,6 +9,21 @@ class ZFW_Admin
 {
 
   /**
+   * Loads Zonos Admin Styles
+   *
+   * @method load_zonos_elements_script
+   */
+  function load_admin_styles()
+  {
+    wp_enqueue_style(
+      'zfw_admin_styles',
+      ZFW_DIRECTORY_URL . 'admin/css/zfw_admin_styles.css',
+      null,
+      ZFW_VERSION,
+    );
+  }
+
+  /**
    * Create the admin Menu
    * @method create_admin_menu
    */
@@ -51,6 +66,8 @@ class ZFW_Admin
   {
     $this->register_zonos_main_config();
     $this->register_zonos_hello_config();
+    $this->register_zonos_product_config();
+    $this->register_zonos_coupon_config();
   }
 
   /**
@@ -60,6 +77,14 @@ class ZFW_Admin
   function generate_zonos_main_settings_page()
   {
     if (!current_user_can('manage_options')) return;
+
+
+    wp_enqueue_script(
+      'zfw_admin_selector_listener',
+      ZFW_DIRECTORY_URL . 'admin/js/zfw_selector_listener.js',
+      null,
+      ZFW_VERSION,
+    );
 
     $arguments = array(
       'settings_fields' => 'zonos_main_settings',
@@ -472,5 +497,226 @@ class ZFW_Admin
         'sanitize_callback' => 'sanitize_text_field',
       )
     );
+  }
+
+  /**
+   * Registers Zonos Product Mapping Configurations
+   * @method register_zonos_product_config
+   */
+  function register_zonos_product_config()
+  {
+    add_settings_section(
+      'zonos_product_settings_section',
+      __('Product Mapping Configurations for Zonos Integration', 'zonos_for_woocommerce'),
+      null,
+      'zonos_main_settings_page'
+    );
+
+    $WCProductValues = [
+      'Select WooCommerce Variable' => '',
+      'name' => 'name',
+      'description' => 'description',
+      'short_description' => 'short_description',
+      'variation_id' => 'variation_id',
+      'product_id' => 'product_id',
+      'price' => 'price',
+      'sku' => 'sku',
+      'length' => 'length',
+      'width' => 'width',
+      'height' => 'height',
+      'weight' => 'weight',
+      'image_id' => 'image_id',
+      'product_tag' => 'product_tag',
+      'product_brand' => 'product_brand',
+      'product_cat' => 'product_cat',
+      'custom' => 'custom',
+    ];
+    $productVariables = [
+      'zonos_item_description' => [
+        'name' => 'Description',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_name' => [
+        'name' => 'Name',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_item_description_long' => [
+        'name' => 'Long Description',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_product_id' => [
+        'name' => 'Product ID',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_price' => [
+        'name' => 'Price',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_sku' => [
+        'name' => 'Sku',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_length' => [
+        'name' => 'Length',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_width' => [
+        'name' => 'Width',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_height' => [
+        'name' => 'Height',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_weight' => [
+        'name' => 'Weight',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_image' => [
+        'name' => 'Image',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_hs_code' => [
+        'name' => 'HS Code',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_brand' => [
+        'name' => 'Brand',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_category' => [
+        'name' => 'Category',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCProductValues,
+      ],
+      'zonos_country' => [
+        'name' => 'Country',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+      'zonos_url' => [
+        'name' => 'Url',
+        'type' => 'selector_input_setting',
+        'required' => false,
+        'options' => $WCProductValues,
+      ],
+    ];
+
+    foreach ($productVariables as $id => $args) {
+      add_settings_field(
+        $id,
+        __($args['name'] . ($args['required'] ? ' *' : ''), 'zonos_for_woocommerce'),
+        array($this, $args['type']),
+        'zonos_main_settings_page',
+        'zonos_product_settings_section',
+        array(
+          'id' => 'input_' . $id,
+          'name' => $id,
+          'value' => get_option($id, ''),
+          'placeholder' => __('Enter your ' . $args['name'], 'zonos_for_woocommerce'),
+          'description' => __('Some filler text', 'zonos_for_woocommerce'),
+          'options' => $args['options'],
+          'required' => $args['required']
+        )
+      );
+      register_setting(
+        'zonos_main_settings',
+        $id,
+        array(
+          'type' => 'string',
+          'sanitize_callback' => 'sanitize_text_field',
+        )
+      );
+    }
+  }
+
+  /**
+   * Registers Zonos Coupon Mapping Configurations
+   * @method register_zonos_coupon_config
+   */
+  function register_zonos_coupon_config()
+  {
+    add_settings_section(
+      'zonos_coupon_settings_section',
+      __('Coupon Mapping Configurations for Zonos Integration', 'zonos_for_woocommerce'),
+      null,
+      'zonos_main_settings_page'
+    );
+
+    $WCCouponValues = [
+      'Select WooCommerce Variable' => '',
+      'code' => 'code',
+      'amount' => 'amount',
+      'custom' => 'custom',
+    ];
+    $couponVariables = [
+      'zonos_coupon_name' => [
+        'name' => 'Name',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCCouponValues,
+      ],
+      'zonos_coupon_price' => [
+        'name' => 'Amount',
+        'type' => 'selector_input_setting',
+        'required' => true,
+        'options' => $WCCouponValues,
+      ]
+    ];
+
+    foreach ($couponVariables as $id => $args) {
+      add_settings_field(
+        $id,
+        __($args['name'], 'zonos_for_woocommerce'),
+        array($this, $args['type']),
+        'zonos_main_settings_page',
+        'zonos_coupon_settings_section',
+        array(
+          'id' => 'input_' . $id,
+          'name' => $id . ($args['required'] ? ' *' : ''),
+          'value' => get_option($id, ''),
+          'placeholder' => __('Enter your ' . $args['name'], 'zonos_for_woocommerce'),
+          'description' => __('Some filler text', 'zonos_for_woocommerce'),
+          'options' => $args['options'],
+          'required' => $args['required']
+        )
+      );
+      register_setting(
+        'zonos_main_settings',
+        $id,
+        array(
+          'type' => 'string',
+          'sanitize_callback' => 'sanitize_text_field',
+        )
+      );
+    }
   }
 }
