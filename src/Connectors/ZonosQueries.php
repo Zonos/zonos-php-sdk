@@ -4,10 +4,18 @@ namespace Zonos\ZonosSdk\Connectors;
 
 use Zonos\ZonosSdk\Requests\Pending\CheckoutSettingsRequest;
 
+/**
+ * Trait for queries available in the Zonos SDK
+ */
 trait ZonosQueries
 {
-    public function checkoutSettings(): CheckoutSettingsRequest
-    {
-        return new CheckoutSettingsRequest($this);
-    }
+  /**
+   * Get checkout settings
+   *
+   * @return CheckoutSettingsRequest
+   */
+  public function checkoutSettings(): CheckoutSettingsRequest
+  {
+    return new CheckoutSettingsRequest($this);
+  }
 }

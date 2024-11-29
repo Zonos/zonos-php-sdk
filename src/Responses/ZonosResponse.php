@@ -4,7 +4,15 @@ namespace Zonos\ZonosSdk\Responses;
 
 use Saloon\Http\Response;
 
+/**
+ * Abstract class for Zonos responses
+ */
 abstract class ZonosResponse extends Response
 {
-    abstract public function resolve(); // Figure out typing
+  /**
+   * Resolve the response
+   *
+   * @return mixed
+   */
+  abstract public function resolve();
 }

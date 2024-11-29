@@ -7,25 +7,44 @@ use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Traits\Body\HasJsonBody;
 
+/**
+ * ZonosRequest class for handling Zonos API requests
+ */
 class ZonosRequest extends Request implements HasBody
 {
-    use HasJsonBody;
+  use HasJsonBody;
 
-    protected Method $method = Method::POST;
+  protected Method $method = Method::POST;
 
-    public function __construct(
-        protected ?string $response,
-        protected string $gql,
-    ) {
-    }
+  /**
+   * Constructor for the ZonosRequest
+   *
+   * @param string|null $response The response type
+   * @param string $gql The GraphQL query
+   */
+  public function __construct(
+    protected ?string $response,
+    protected string  $gql,
+  ) {
+  }
 
-    public function resolveEndpoint(): string
-    {
-        return '/graphql';
-    }
+  /**
+   * Resolve the endpoint for the request
+   *
+   * @return string
+   */
+  public function resolveEndpoint(): string
+  {
+    return '/graphql';
+  }
 
-    protected function defaultBody(): array
-    {
-        return ['query' => $this->gql];
-    }
+  /**
+   * Default body for the request
+   *
+   * @return array
+   */
+  protected function defaultBody(): array
+  {
+    return ['query' => $this->gql];
+  }
 }
