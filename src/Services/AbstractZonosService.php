@@ -15,7 +15,8 @@ abstract class AbstractZonosService
    * @param ZonosConnector $connector The connector instance
    */
   public function __construct(
-    protected readonly ZonosConnector $connector
+    protected readonly ZonosConnector    $connector,
+    protected readonly DataMapperService $dataMapper,
   ) {
   }
 

@@ -16,10 +16,10 @@ class ZonosServiceFactory
    * @param ZonosConnector $connector The connector instance
    * @return AbstractZonosService
    */
-  public static function createService(ZonosConnector $connector): AbstractZonosService
+  public static function createService(ZonosPlatformType $zonos_platform_type, ZonosConnector $connector, DataMapperService $data_mapper_service): AbstractZonosService
   {
-    return match ($connector->getPlatformType()) {
-      ZonosPlatformType::Wordpress => new WordPressService($connector),
+    return match ($zonos_platform_type) {
+      ZonosPlatformType::Wordpress => new WordPressService($connector, $data_mapper_service),
       default => throw new \InvalidArgumentException('Unsupported platform type'),
     };
   }

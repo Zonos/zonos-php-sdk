@@ -15,9 +15,11 @@ class WordPressService extends AbstractZonosService
    *
    * @param ZonosConnector $connector The connector instance
    */
-  public function __construct(ZonosConnector $connector)
-  {
-    parent::__construct($connector);
+  public function __construct(
+    ZonosConnector    $connector,
+    DataMapperService $data_mapper_service
+  ) {
+    parent::__construct($connector, $data_mapper_service);
   }
 
   /**
