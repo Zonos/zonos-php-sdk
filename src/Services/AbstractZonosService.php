@@ -26,5 +26,12 @@ abstract class AbstractZonosService
    * @param array $orderData Order data with required fields
    * @return int The ID of the created order
    */
-  abstract public function storeOrder(array $orderData): int;
+  abstract public function storeOrder(array $orderData): inåt;
+
+  /**
+   * Export an order from the database in Zonos Format
+   *
+   * @return array The exported order data
+   */
+  abstract public function exportOrder(): array;
 }
