@@ -93,7 +93,7 @@ class WordPressService extends AbstractZonosService
   public function storeOrder(array $orderData): int
   {
 
-    return 00;
+    return 0;
   }
 
   /**
