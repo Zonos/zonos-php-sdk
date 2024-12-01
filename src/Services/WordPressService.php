@@ -49,8 +49,11 @@ class WordPressService extends AbstractZonosService
       $methods = get_class_methods($product);
       foreach ($methods as $method) {
         if (str_starts_with($method, 'get_')) {
-          $key = substr($method, 4); // Drop the get_ prefix
-          $rawProductData[$key] = $product->$method();
+          $reflectionMethod = new \ReflectionMethod($product, $method);
+          if ($reflectionMethod->getNumberOfParameters() === 0) { // TODO: Julio we need to review this it will check if the method takes no arguments and only make the call of it does
+            $key = substr($method, 4); // Drop the get_ prefix
+            $rawProductData[$key] = $product->$method();
+          }
         }
       }
 
