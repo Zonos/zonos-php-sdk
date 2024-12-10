@@ -35,9 +35,15 @@ class DataMapperService
     }
 
     $result = [];
-    foreach ($data as $key => $value) {
-      $mappedKey = $mapping[$key] ?? $key;
-      $result[$mappedKey] = $value;
+
+    // This will populate the whole product object based in the data
+    // and mapping
+    foreach ($mapping as $zonosKey => $WCValue) {
+      if ($data[$WCValue]) {
+        $result[$zonosKey] = $data[$WCValue];
+      } else {
+        $result[$zonosKey] = null;
+      }
     }
 
     return $result;

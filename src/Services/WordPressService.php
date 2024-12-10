@@ -34,9 +34,10 @@ class WordPressService extends AbstractZonosService
       throw new \RuntimeException('WooCommerce is not active');
     }
 
-    $products = [];
+    $items = [];
+    $cart = WC()->cart;
 
-    foreach (WC()->cart->get_cart() as $cart_item) {
+    foreach ($cart->get_cart() as $cart_item) {
       $product = wc_get_product($cart_item['product_id']);
 
       $rawProductData = [
@@ -46,15 +47,8 @@ class WordPressService extends AbstractZonosService
         'image_id' => wp_get_attachment_image_url($product->get_image_id()),
       ];
 
-      $methods = get_class_methods($product);
-      foreach ($methods as $method) {
-        if (str_starts_with($method, 'get_')) {
-          $reflectionMethod = new \ReflectionMethod($product, $method);
-          if ($reflectionMethod->getNumberOfParameters() === 0) { // TODO: Julio we need to review this it will check if the method takes no arguments and only make the call of it does
-            $key = substr($method, 4); // Drop the get_ prefix
-            $rawProductData[$key] = $product->$method();
-          }
-        }
+      foreach ($product->get_data() as $key => $value) {
+        $rawProductData[$key] = $value;
       }
 
       if (!empty($product->get_attributes())) {
@@ -63,11 +57,27 @@ class WordPressService extends AbstractZonosService
 
       $mappedProduct = $this->dataMapper->mapData('product', $rawProductData);
 
-
-      $products[] = $mappedProduct;
+      array_push($items, $mappedProduct);
     }
 
-    return $products;
+    foreach ($cart->get_coupons() as $cart_coupon) {
+      $couponData = $cart_coupon->get_data();
+      $mappedCoupon = $this->dataMapper->mapData('coupon', $couponData);
+
+      if ($mappedCoupon['price'] && $couponData['discount_type'] === "percent") {
+        $mappedCoupon['price'] = -round($cart->get_subtotal() * ($mappedCoupon['price'] / 100), 2);
+      } else {
+        $mappedCoupon['price'] = -$mappedCoupon['price'];
+      }
+
+      $mappedCoupon['quantity'] = 1;
+      $mappedCoupon['nonShippable'] = true;
+      $mappedCoupon['itemDescription'] = 'Coupon';
+
+      array_push($items, $mappedCoupon);
+    }
+
+    return $items;
   }
 
   /**
