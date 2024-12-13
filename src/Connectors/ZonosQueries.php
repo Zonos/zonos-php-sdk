@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Connectors;
 
 use Zonos\ZonosSdk\Requests\Pending\CheckoutSettingsRequest;
+use Zonos\ZonosSdk\Requests\Pending\OrderRequest;
 
 /**
  * Trait for queries available in the Zonos SDK
@@ -17,5 +18,11 @@ trait ZonosQueries
   public function checkoutSettings(): CheckoutSettingsRequest
   {
     return new CheckoutSettingsRequest($this);
+  }
+
+
+  public function order(): OrderRequest
+  {
+    return new OrderRequest($this);
   }
 }
