@@ -4,12 +4,11 @@ namespace Zonos\ZonosSdk\Data;
 
 class Order
 {
-  public string $id;
 
   public function __construct(
-    string $id,
+    public string $id,
+    public array  $items = []
   ) {
-    $this->id = $id;
   }
 
 
@@ -17,15 +16,21 @@ class Order
   {
     return [
       'id' => $this->id,
+      'items' => array_map(fn(Item $item) => $item->toArray(), $this->items),
     ];
   }
 
   public static function fromArray(array $data): self
   {
     $id = $data['id'] ?? '';
+    $items = array_map(
+      fn(array $item) => Item::fromArray($item),
+      $data['items'] ?? []
+    );
 
     return new self(
       $id,
+      $items
     );
   }
 }
