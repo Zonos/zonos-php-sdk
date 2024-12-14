@@ -27,5 +27,5 @@ abstract class AbstractZonosService
    * @param array $order_data Order data with required fields
    * @return int The ID of the created order
    */
-  abstract public function storeOrder(Order $order_data): int;
+  abstract public function storeOrder(Order $order_data): \WC_Order;
 }

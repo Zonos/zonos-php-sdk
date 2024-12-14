@@ -6,31 +6,29 @@ class Item
 {
 
   public function __construct(
-    public string $sku,
     public string $productId,
     public int    $quantity,
-  ) {
+    public string $sku, // TODO: wc_get_product uses productId however i might want to use this if there is failure
+  )
+  {
   }
 
 
   public function toArray(): array
   {
     return [
-      'sku' => $this->sku,
       'productId' => $this->productId,
       'quantity' => $this->quantity,
+      'sku' => $this->sku,
     ];
   }
 
   public static function fromArray(array $data): self
   {
-    $sku = $data['sku'] ?? '';
-    $productId = $data['productId'] ?? '';
-    $quantity = $data['quantity'] ?? 0;
     return new self(
-      $sku,
-      $productId,
-      $quantity
+      $data['productId'] ?? '',
+      $data['quantity'] ?? 0,
+      $data['sku'] ?? '',
     );
   }
 }
