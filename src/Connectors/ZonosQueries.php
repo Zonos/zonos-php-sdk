@@ -21,8 +21,8 @@ trait ZonosQueries
   }
 
 
-  public function order(): OrderRequest
+  public function order($args): OrderRequest
   {
-    return new OrderRequest($this);
+    return new OrderRequest($this, $args);
   }
 }

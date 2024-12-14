@@ -19,13 +19,13 @@ class DataMapperService
   ) {
   }
 
-    /**
-     * Map data according to configured entity mappings
-     *
-     * @param string $entity The entity type to map
-     * @param array $data The data to be mapped
-     * @return array The mapped data
-     */
+  /**
+   * Map data according to configured entity mappings
+   *
+   * @param string $entity The entity type to map
+   * @param array $data The data to be mapped
+   * @return array The mapped data
+   */
   public function mapData(string $entity, array $data): array
   {
     $mapping = $this->config->getMapping($entity);
@@ -36,8 +36,8 @@ class DataMapperService
 
     $result = [];
     foreach ($data as $key => $value) {
-      $mappedKey = $mapping[$key] ?? $key;
-      $result[$mappedKey] = $value;
+      $mapped_key = $mapping[$key] ?? $key;
+      $result[$mapped_key] = $value;
     }
 
     return $result;

@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Services;
 
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Data\Order;
 
 /**
  * Abstract class for Zonos services
@@ -16,15 +17,15 @@ abstract class AbstractZonosService
    */
   public function __construct(
     protected readonly ZonosConnector    $connector,
-    protected readonly DataMapperService $dataMapper,
+    protected readonly DataMapperService $data_mapper_service,
   ) {
   }
 
   /**
    * Store an order in the database
    *
-   * @param array $orderData Order data with required fields
+   * @param array $order_data Order data with required fields
    * @return int The ID of the created order
    */
-  abstract public function storeOrder(array $orderData): int;
+  abstract public function storeOrder(Order $order_data): int;
 }

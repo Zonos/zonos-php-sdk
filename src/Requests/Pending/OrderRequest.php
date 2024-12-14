@@ -22,9 +22,7 @@ class OrderRequest extends PendingZonosRequest
 
   public function get(string ...$fields): Order
   {
-    $resolved = $this->response(...$fields)->resolve();
-
-    return $resolved;
+    return $this->response(...$fields)->resolve();
   }
 
   public function response(string ...$fields): OrderQueryResponse

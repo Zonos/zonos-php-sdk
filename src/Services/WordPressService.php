@@ -4,6 +4,7 @@ namespace Zonos\ZonosSdk\Services;
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Data\Order;
 
 /**
  * Service for handling WordPress-specific operations
@@ -25,12 +26,13 @@ class WordPressService extends AbstractZonosService
   /**
    * Store a WooCommerce order in the WordPress database
    *
-   * @param array $orderData Order data with required fields
+   * @param array $order_data Order data with required fields
    * @return int The ID of the created order
    * @throws InvalidArgumentException
    */
-  public function storeOrder(array $orderData): int
+  public function storeOrder(Order $order_data): int
   {
+
 
     return 0;
   }
@@ -51,10 +53,10 @@ class WordPressService extends AbstractZonosService
   /**
    * Store order meta data
    *
-   * @param int $orderId The order ID
-   * @param array $orderData The order data
+   * @param int $order_id The order ID
+   * @param array $order_data The order data
    */
-  private function storeOrderMeta(int $orderId, array $orderData): void
+  private function storeOrderMeta(int $order_id, array $order_data): void
   {
 
   }
@@ -62,10 +64,10 @@ class WordPressService extends AbstractZonosService
   /**
    * Store order items
    *
-   * @param int $orderId The order ID
+   * @param int $order_id The order ID
    * @param array $items The items
    */
-  private function storeOrderItems(int $orderId, array $items): void
+  private function storeOrderItems(int $order_id, array $items): void
   {
 
   }
