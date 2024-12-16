@@ -7,11 +7,15 @@ class Order
 
   public function __construct(
     public ?AmountSubtotals $amountSubtotals,
-    public string $currencyCode,
-    public string $id,
-    public array  $items,
-    public array  $parties,
-    public string $status,
+    public string           $currencyCode,
+    public string           $id,
+    /** @var Item[] $items */
+    public array            $items,
+    /** @var Party[] $parties */
+    public array            $parties,
+    /** @var ShipmentRating[] $shipmentRatings */
+    public array            $shipmentRatings,
+    public string           $status,
   ) {
   }
 
@@ -24,6 +28,7 @@ class Order
       'id' => $this->id,
       'items' => array_map(fn(Item $item) => $item->toArray(), $this->items),
       'parties' => array_map(fn(Party $party) => $party->toArray(), $this->parties),
+      'shipmentRatings' => array_map(fn(ShipmentRating $shipmentRating) => $shipmentRating->toArray(), $this->shipmentRatings),
       'status' => $this->status
     ];
   }
@@ -41,6 +46,10 @@ class Order
       array_map(
         fn(array $party) => Party::fromArray($party),
         $data['parties'] ?? []
+      ) ?? [],
+      array_map(
+        fn(array $shipmentRating) => Party::fromArray($shipmentRating),
+        $data['shipmentRatings'] ?? []
       ) ?? [],
       $data['status'] ?? '',
     );

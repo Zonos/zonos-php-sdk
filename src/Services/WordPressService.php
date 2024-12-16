@@ -5,6 +5,7 @@ namespace Zonos\ZonosSdk\Services;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
 use Zonos\ZonosSdk\Data\Enums\PartyType;
+use Zonos\ZonosSdk\Data\Item;
 use Zonos\ZonosSdk\Data\Order;
 use Zonos\ZonosSdk\Data\Party;
 
@@ -40,7 +41,7 @@ class WordPressService extends AbstractZonosService
     /** @var \WC_Order $wooOrder */
     $wooOrder = wc_create_order(
       [
-        'status' => $order_data->status ?? 'pending',
+        'status' => 'wc-processing', // $order_data->status // TODO: find an equivalence table
       ]
     );
 
@@ -48,17 +49,22 @@ class WordPressService extends AbstractZonosService
       throw new InvalidArgumentException('Failed to create WooCommerce order');
     }
 
+    /** @var null|Item $item */
     foreach ($order_data->items as $item) {
-      /** @var \WC_Product $product */
-      $product = wc_get_product($item->productId);
-      if (!$product) {
-        throw new InvalidArgumentException("Product not found with ID: {$item->productId}");
-        // TODO:  Let's validate if productId is defined first. We might just have the SKU configured
-        //        in that case then we can use wc_get_product_id_by_sku to get the productID
-      }
-      $wooOrder->add_product($product, $item->quantity);
-    }
+      $productId = wc_get_product_id_by_sku($item->sku);
 
+      /** @var \WC_Product $product */
+      $product = wc_get_product($productId ?? $item->productId);
+      if (!$product) {
+        throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
+      }
+      $wooOrder->add_product(
+        $product, $item->quantity, [
+                  'subtotal' => $item->amount ?? $product->get_price(),
+                  'total' => $item->amount ?? $product->get_price(),
+                ]
+      );
+    }
 
     /** @var null|Party $billing_party */
     $billing_party = null;
@@ -108,23 +114,34 @@ class WordPressService extends AbstractZonosService
     }
 
     if ($order_data->amountSubtotals !== null) {
-      $wooOrder->set_shipping_total($order_data->amountSubtotals->shipping);
       $wooOrder->set_discount_total($order_data->amountSubtotals->discounts);
-      $wooOrder->set_cart_tax($order_data->amountSubtotals->taxes);
+      $wooOrder->set_currency($order_data->currencyCode);
 
-//      if ($order_data->amountSubtotals->shipping > 0) {
-//        $shipping_item = new \WC_Order_Item_Shipping();
-//        $shipping_item->set_method_title(); // TODO: Let's find where we can get these two values
-//        $shipping_item->set_method_id();
-//        $shipping_item->set_total($order_data->amountSubtotals->shipping);
-//        $wooOrder->add_item($shipping_item);
-//      }
+      if ($order_data->amountSubtotals->shipping > 0) {
+        $shipping_method = !empty($order_data->shipmentRatings) ? $order_data->shipmentRatings[0] : null;
+
+        $shipping_item = new \WC_Order_Item_Shipping();
+        $shipping_item->set_method_title($shipping_method?->displayName ?? 'Shipping');
+        $shipping_item->set_method_id($shipping_method?->serviceLevelCode ?? 'default');
+        $shipping_item->set_total($order_data->amountSubtotals->shipping);
+        $wooOrder->add_item($shipping_item);
+      }
+
+      if ($order_data->amountSubtotals->taxes > 0) {
+        $fee = new \WC_Order_Item_Fee();
+        $fee->set_name('Taxes');
+        $fee->set_amount($order_data->amountSubtotals->taxes);
+        $fee->set_total($order_data->amountSubtotals->taxes);
+        $fee->set_tax_status('none');
+        $wooOrder->add_item($fee);
+      }
 
       if ($order_data->amountSubtotals->duties > 0) {
         $fee = new \WC_Order_Item_Fee();
         $fee->set_name('Duties');
         $fee->set_amount($order_data->amountSubtotals->duties);
         $fee->set_total($order_data->amountSubtotals->duties);
+        $fee->set_tax_status('none');
         $wooOrder->add_item($fee);
       }
 
@@ -133,6 +150,7 @@ class WordPressService extends AbstractZonosService
         $fee->set_name('Additional Fees');
         $fee->set_amount($order_data->amountSubtotals->fees);
         $fee->set_total($order_data->amountSubtotals->fees);
+        $fee->set_tax_status('none');
         $wooOrder->add_item($fee);
       }
     }
