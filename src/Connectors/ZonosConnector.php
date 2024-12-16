@@ -14,6 +14,9 @@ use Saloon\Http\Connector;
  */
 class ZonosConnector extends Connector
 {
+  use ZonosQueries;
+  use ZonosMutations;
+
   /**
    * Create a new Zonos connector instance
    *
