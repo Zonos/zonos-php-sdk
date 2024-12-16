@@ -36,8 +36,8 @@ class DataMapperService
 
     $result = [];
     foreach ($data as $key => $value) {
-      $mapped_key = $mapping[$key] ?? $key;
-      $result[$mapped_key] = $value;
+      $mappedKey = $mapping[$key] ?? null;
+      if ($mappedKey != null) $result[$mappedKey] = $value;
     }
 
     return $result;
