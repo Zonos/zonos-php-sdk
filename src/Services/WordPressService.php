@@ -45,60 +45,12 @@ class WordPressService extends AbstractZonosService
     foreach ($cart->get_cart() as $cart_item) {
       $product = wc_get_product($cart_item['product_id']);
 
-      $rawProductData = [
-        'product_id' => $product->get_id(),
-        'url' => get_permalink($product->get_id()),
-        'product_cat' => $this->getProductCategories($product),
-        'image_id' => wp_get_attachment_image_url($product->get_image_id()),
-      ];
-
-      foreach ($product->get_data() as $key => $value) {
-        $rawProductData[$key] = $value;
-      }
-
-      if (!empty($product->get_attributes())) {
-        $rawProductData['itemCustomization'] = json_encode($product->get_attributes());
-      }
-
-      $mappedProduct = $this->dataMapper->mapData('product', $rawProductData);
+      $mappedProduct = $this->data_mapper_service->mapProductData($cart_item, $product);
 
       array_push($items, $mappedProduct);
     }
 
-    foreach ($cart->get_coupons() as $cart_coupon) {
-      $couponData = $cart_coupon->get_data();
-      $mappedCoupon = $this->dataMapper->mapData('coupon', $couponData);
-
-      if ($mappedCoupon['price'] && $couponData['discount_type'] === "percent") {
-        $mappedCoupon['price'] = -round($cart->get_subtotal() * ($mappedCoupon['price'] / 100), 2);
-      } else {
-        $mappedCoupon['price'] = -$mappedCoupon['price'];
-      }
-
-      $mappedCoupon['quantity'] = 1;
-      $mappedCoupon['nonShippable'] = true;
-      $mappedCoupon['itemDescription'] = 'Coupon';
-
-      array_push($items, $mappedCoupon);
-    }
-
     return $items;
-  }
-
-  /**
-   * Get formatted product categories
-   *
-   * @param \WC_Product $product
-   * @return string Comma-separated category slugs
-   */
-  private function getProductCategories(\WC_Product $product): string
-  {
-    $categories = get_the_terms($product->get_id(), 'product_cat');
-    if (!$categories || is_wp_error($categories)) {
-      return '';
-    }
-
-    return implode(',', array_map(fn($category) => $category->slug, $categories));
   }
 
   /**
