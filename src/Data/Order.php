@@ -6,6 +6,7 @@ class Order
 {
 
   public function __construct(
+    public string           $accountOrderNumber,
     public ?AmountSubtotals $amountSubtotals,
     public string           $currencyCode,
     public string           $id,
@@ -13,6 +14,7 @@ class Order
     public array            $items,
     /** @var Party[] $parties */
     public array            $parties,
+    public ?Root            $root,
     /** @var ShipmentRating[] $shipmentRatings */
     public array            $shipmentRatings,
     public string           $status,
@@ -23,11 +25,13 @@ class Order
   public function toArray(): array
   {
     return [
+      'accountOrderNumber' => $this->accountOrderNumber,
       'amountSubtotals' => $this->amountSubtotals?->toArray(),
       'currencyCode' => $this->currencyCode,
       'id' => $this->id,
       'items' => array_map(fn(Item $item) => $item->toArray(), $this->items),
       'parties' => array_map(fn(Party $party) => $party->toArray(), $this->parties),
+      'root' => $this->root?->toArray(),
       'shipmentRatings' => array_map(fn(ShipmentRating $shipmentRating) => $shipmentRating->toArray(), $this->shipmentRatings),
       'status' => $this->status
     ];
@@ -36,6 +40,7 @@ class Order
   public static function fromArray(array $data): self
   {
     return new self(
+      $data['accountOrderNumber'] ?? '',
       isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
       $data['currencyCode'] ?? '',
       $data['id'] ?? '',
@@ -47,8 +52,9 @@ class Order
         fn(array $party) => Party::fromArray($party),
         $data['parties'] ?? []
       ) ?? [],
+      isset($data['root']) ? Root::fromArray($data['root']) : null,
       array_map(
-        fn(array $shipmentRating) => Party::fromArray($shipmentRating),
+        fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
         $data['shipmentRatings'] ?? []
       ) ?? [],
       $data['status'] ?? '',

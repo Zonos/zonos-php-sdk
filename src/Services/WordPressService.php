@@ -5,6 +5,7 @@ namespace Zonos\ZonosSdk\Services;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
 use Zonos\ZonosSdk\Data\Enums\PartyType;
+use Zonos\ZonosSdk\Data\ExchangeRate;
 use Zonos\ZonosSdk\Data\Item;
 use Zonos\ZonosSdk\Data\Order;
 use Zonos\ZonosSdk\Data\Party;
@@ -109,13 +110,62 @@ class WordPressService extends AbstractZonosService
    */
   public function storeOrder(Order $order_data): \WC_Order
   {
-    // TODO: Let's move the querying of the data to here and not expect the object to arrive from somewhere
-    //        might be best jus to get the order ID and perform all of the logic from here
+    $this->validateExistingOrder($order_data->id);
 
     /** @var \WC_Order $wooOrder */
+    $wooOrder = null;
+
+    try {
+      $wooOrder = $this->createBaseOrder($order_data->id);
+      $this->addOrderItems($wooOrder, $order_data->items);
+      $this->setOrderAddresses($wooOrder, $order_data->parties);
+      $this->processOrderTotals($wooOrder, $order_data);
+
+      $wooOrder->calculate_totals();
+      $wooOrder->save();
+
+      return $wooOrder;
+    } catch (\Exception $e) {
+      if ($wooOrder !== null) {
+        $wooOrder->delete(true);
+      }
+      throw $e;
+    }
+  }
+
+  /**
+   * Validates if the order should be created
+   *
+   * @param string $zonos_order_id The order ID
+   * @throws InvalidArgumentException If the order exists
+   */
+  private function validateExistingOrder(string $zonos_order_id): void
+  {
+    $existing_orders = wc_get_orders(
+      [
+        'meta_key' => 'zonos_order_id',
+        'meta_value' => $zonos_order_id,
+        'limit' => 1,
+      ]
+    );
+
+    if (!empty($existing_orders)) {
+      throw new InvalidArgumentException("Order with Zonos ID {$zonos_order_id} already exists");
+    }
+  }
+
+  /**
+   * Creates the WooCommerce order
+   *
+   * @param string $zonos_order_id The order ID
+   * @return \WC_Order The order
+   * @throws InvalidArgumentException If order failed to be created
+   */
+  private function createBaseOrder(string $zonos_order_id): \WC_Order
+  {
     $wooOrder = wc_create_order(
       [
-        'status' => 'wc-processing', // $order_data->status // TODO: find an equivalence table
+        'status' => 'wc-processing',
       ]
     );
 
@@ -123,33 +173,49 @@ class WordPressService extends AbstractZonosService
       throw new InvalidArgumentException('Failed to create WooCommerce order');
     }
 
-    /** @var null|Item $item */
-    foreach ($order_data->items as $item) {
-      $productId = wc_get_product_id_by_sku($item->sku);
+    $wooOrder->update_meta_data('zonos_order_id', $zonos_order_id);
+    $wooOrder->update_meta_data('order_attribution_origin', 'Zonos Checkout');
 
-      /** @var \WC_Product $product */
+    return $wooOrder;
+  }
+
+  /**
+   * Adds the product to the order
+   *
+   * @param \WC_Order $wooOrder The order
+   * @param Item[] $items The items/products to add
+   * @throws InvalidArgumentException If the product is not found
+   */
+  private function addOrderItems(\WC_Order $wooOrder, array $items): void
+  {
+    foreach ($items as $item) {
+      $productId = wc_get_product_id_by_sku($item->sku);
       $product = wc_get_product($productId ?? $item->productId);
+
       if (!$product) {
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
+
       $wooOrder->add_product(
-        $product, $item->quantity, [
-                  'subtotal' => $item->amount ?? $product->get_price(),
-                  'total' => $item->amount ?? $product->get_price(),
-                ]
+        $product,
+        $item->quantity,
+        [
+          'subtotal' => $item->amount ?? $product->get_price(),
+          'total' => $item->amount ?? $product->get_price(),
+        ]
       );
     }
+  }
 
-    /** @var null|Party $billing_party */
-    $billing_party = null;
-    /** @var Party $party */
-    foreach ($order_data->parties as $party) {
-      if ($party->type === PartyType::PAYOR) {
-        $billing_party = $party;
-        break;
-      }
-    }
-
+  /**
+   * Sets billing and shipping addresses to the order
+   *
+   * @param \WC_Order $wooOrder The order
+   * @param Party[] $parties The parties/addreses
+   */
+  private function setOrderAddresses(\WC_Order $wooOrder, array $parties): void
+  {
+    $billing_party = $this->findPartyByType($parties, PartyType::PAYOR);
     if ($billing_party !== null) {
       $wooOrder->set_billing_first_name($billing_party->person?->firstName ?? '');
       $wooOrder->set_billing_last_name($billing_party->person?->lastName ?? '');
@@ -164,16 +230,7 @@ class WordPressService extends AbstractZonosService
       $wooOrder->set_billing_phone($billing_party->person?->phone ?? '');
     }
 
-    /** @var null|Party $shipping_party */
-    $shipping_party = null;
-    /** @var Party $party */
-    foreach ($order_data->parties as $party) {
-      if ($party->type === PartyType::DESTINATION) {
-        $shipping_party = $party;
-        break;
-      }
-    }
-
+    $shipping_party = $this->findPartyByType($parties, PartyType::DESTINATION);
     if ($shipping_party !== null) {
       $wooOrder->set_shipping_first_name($shipping_party->person?->firstName ?? '');
       $wooOrder->set_shipping_last_name($shipping_party->person?->lastName ?? '');
@@ -186,87 +243,117 @@ class WordPressService extends AbstractZonosService
       $wooOrder->set_shipping_country($shipping_party->location?->countryCode ?? '');
       $wooOrder->set_shipping_phone($shipping_party->person?->phone ?? '');
     }
+  }
 
-    if ($order_data->amountSubtotals !== null) {
-      $wooOrder->set_discount_total($order_data->amountSubtotals->discounts);
-      $wooOrder->set_currency($order_data->currencyCode);
-
-      if ($order_data->amountSubtotals->shipping > 0) {
-        $shipping_method = !empty($order_data->shipmentRatings) ? $order_data->shipmentRatings[0] : null;
-
-        $shipping_item = new \WC_Order_Item_Shipping();
-        $shipping_item->set_method_title($shipping_method?->displayName ?? 'Shipping');
-        $shipping_item->set_method_id($shipping_method?->serviceLevelCode ?? 'default');
-        $shipping_item->set_total($order_data->amountSubtotals->shipping);
-        $wooOrder->add_item($shipping_item);
+  /**
+   * Finds a party by type
+   *
+   * @param Party[] $parties The parties
+   * @param PartyType $type The party type
+   * @return Party|null The party or null
+   */
+  private function findPartyByType(array $parties, PartyType $type): ?Party
+  {
+    foreach ($parties as $party) {
+      if ($party->type === $type) {
+        return $party;
       }
+    }
+    return null;
+  }
 
-      if ($order_data->amountSubtotals->taxes > 0) {
-        $fee = new \WC_Order_Item_Fee();
-        $fee->set_name('Taxes');
-        $fee->set_amount($order_data->amountSubtotals->taxes);
-        $fee->set_total($order_data->amountSubtotals->taxes);
-        $fee->set_tax_status('none');
-        $wooOrder->add_item($fee);
+  /**
+   * Processes the order totals
+   *
+   * @param \WC_Order $wooOrder The order
+   * @param Order $order_data The order data
+   */
+  private function processOrderTotals(\WC_Order $wooOrder, Order $order_data): void
+  {
+    if ($order_data->amountSubtotals === null) {
+      return;
+    }
+
+    $exchangeRate = $this->getExchangeRate($order_data);
+    $convertAmount = function (float $amount) use ($exchangeRate): float {
+      if ($exchangeRate !== null) {
+        return round($amount / $exchangeRate->rate, 2);
       }
+      return $amount;
+    };
 
-      if ($order_data->amountSubtotals->duties > 0) {
-        $fee = new \WC_Order_Item_Fee();
-        $fee->set_name('Duties');
-        $fee->set_amount($order_data->amountSubtotals->duties);
-        $fee->set_total($order_data->amountSubtotals->duties);
-        $fee->set_tax_status('none');
-        $wooOrder->add_item($fee);
-      }
+    $wooOrder->set_discount_total($convertAmount($order_data->amountSubtotals->discounts));
+    $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $order_data->currencyCode);
 
-      if ($order_data->amountSubtotals->fees > 0) {
-        $fee = new \WC_Order_Item_Fee();
-        $fee->set_name('Additional Fees');
-        $fee->set_amount($order_data->amountSubtotals->fees);
-        $fee->set_total($order_data->amountSubtotals->fees);
-        $fee->set_tax_status('none');
-        $wooOrder->add_item($fee);
+    $this->addShippingIfNeeded($wooOrder, $order_data, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Taxes', $order_data->amountSubtotals->taxes, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Duties', $order_data->amountSubtotals->duties, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $order_data->amountSubtotals->fees, $convertAmount);
+  }
+
+  /**
+   * Gets exchange rate if needed
+   *
+   * @param Order $order_data The order data
+   * @return ExchangeRate|null The exchange rate object or null
+   */
+  private function getExchangeRate(Order $order_data): ?ExchangeRate
+  {
+    if ($order_data->root === null ||
+    empty($order_data->root->exchangeRates) ||
+    $order_data->currencyCode === reset($order_data->items)->currencyCode ?? '') {
+      return null;
+    }
+
+    foreach ($order_data->root->exchangeRates as $rate) {
+      if ($rate->targetCurrencyCode === $order_data->currencyCode) {
+        return $rate;
       }
     }
 
-    $wooOrder->calculate_totals();
-    $wooOrder->save();
-
-    return $wooOrder;
+    return null;
   }
 
   /**
-   * Validate the order data
+   * Adds shipping to the order if needed
    *
-   * @param array $data The order data
-   * @param array $required The required fields
-   * @param string $prefix The prefix for the error message
-   * @throws InvalidArgumentException
+   * @param \WC_Order $wooOrder The order
+   * @param Order $order_data The order data
+   * @param callable $convertAmount The converter
    */
-  private function validateOrderData(array $data, array $required, string $prefix = ''): void
+  private function addShippingIfNeeded(\WC_Order $wooOrder, Order $order_data, callable $convertAmount): void
   {
+    if ($order_data->amountSubtotals->shipping <= 0) {
+      return;
+    }
 
+    $shipping_method = !empty($order_data->shipmentRatings) ? $order_data->shipmentRatings[0] : null;
+    $shipping_item = new \WC_Order_Item_Shipping();
+    $shipping_item->set_method_title($shipping_method?->displayName ?? 'Shipping');
+    $shipping_item->set_method_id($shipping_method?->serviceLevelCode ?? 'default');
+    $shipping_item->set_total($convertAmount($order_data->amountSubtotals->shipping));
+    $wooOrder->add_item($shipping_item);
   }
 
   /**
-   * Store order meta data
+   * Adds a fee to the order if needed
    *
-   * @param int $order_id The order ID
-   * @param array $order_data The order data
+   * @param \WC_Order $wooOrder The order
+   * @param string $name The name
+   * @param float $amount The amount
+   * @param callable $convertAmount The amount converter function
    */
-  private function storeOrderMeta(int $order_id, array $order_data): void
+  private function addFeeIfNeeded(\WC_Order $wooOrder, string $name, float $amount, callable $convertAmount): void
   {
+    if ($amount <= 0) {
+      return;
+    }
 
-  }
-
-  /**
-   * Store order items
-   *
-   * @param int $order_id The order ID
-   * @param array $items The items
-   */
-  private function storeOrderItems(int $order_id, array $items): void
-  {
-
+    $fee = new \WC_Order_Item_Fee();
+    $fee->set_name($name);
+    $fee->set_amount($convertAmount($amount));
+    $fee->set_total($convertAmount($amount));
+    $fee->set_tax_status('none');
+    $wooOrder->add_item($fee);
   }
 }

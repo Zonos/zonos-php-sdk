@@ -7,6 +7,7 @@ class Item
 
   public function __construct(
     public float  $amount,
+    public string $currencyCode,
     public string $productId,
     public int    $quantity,
     public string $sku,
@@ -18,6 +19,7 @@ class Item
   {
     return [
       'amount' => $this->amount,
+      'currencyCode' => $this->currencyCode,
       'productId' => $this->productId,
       'quantity' => $this->quantity,
       'sku' => $this->sku,
@@ -28,6 +30,7 @@ class Item
   {
     return new self(
       (float)($data['amount']) ?? 0.0,
+      $data['currencyCode'] ?? '',
       $data['productId'] ?? '',
       $data['quantity'] ?? 0,
       $data['sku'] ?? '',

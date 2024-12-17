@@ -6,10 +6,10 @@ use Zonos\ZonosSdk\Connectors\ZonosConnector;
 use Zonos\ZonosSdk\Data\Order;
 use Zonos\ZonosSdk\Requests\PendingZonosRequest;
 use Zonos\ZonosSdk\Requests\ZonosRequest;
-use Zonos\ZonosSdk\Responses\Queries\OrderQueryResponse;
+use Zonos\ZonosSdk\Responses\Mutations\OrderUpdateAccountOrderNumberMutationResponse;
 use Zonos\ZonosSdk\Utils\GqlBuilder;
 
-class OrderRequest extends PendingZonosRequest
+class OrderUpdateAccountOrderNumberRequest extends PendingZonosRequest
 {
   protected const DEFAULT_ATTRIBUTES = [
     'id',
@@ -17,7 +17,7 @@ class OrderRequest extends PendingZonosRequest
 
   public function __construct(ZonosConnector $connector, public array $args = [])
   {
-    parent::__construct($connector, GqlBuilder::make('query', 'order', $args));
+    parent::__construct($connector, GqlBuilder::make('mutation', 'orderUpdateAccountOrderNumber', $args));
   }
 
   public function get(string ...$fields): Order
@@ -25,12 +25,12 @@ class OrderRequest extends PendingZonosRequest
     return $this->response(...$fields)->resolve();
   }
 
-  public function response(string ...$fields): OrderQueryResponse
+  public function response(string ...$fields): OrderUpdateAccountOrderNumberMutationResponse
   {
     $query = $this->query->withFields($this->normalizeFields($fields));
 
-    $response = $this->connector->send(new ZonosRequest(OrderQueryResponse::class, (string)$query))->throw();
-    assert($response instanceof OrderQueryResponse);
+    $response = $this->connector->send(new ZonosRequest(OrderUpdateAccountOrderNumberMutationResponse::class, (string)$query))->throw();
+    assert($response instanceof OrderUpdateAccountOrderNumberMutationResponse);
 
     return $response;
   }
