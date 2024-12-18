@@ -37,7 +37,7 @@ class DataMapperService
     $result = [];
 
     foreach ($mapping as $key => $value) {
-      $result[$key] = $data[$value];
+      if ($value != '') $result[$key] = $data[$value];
     }
 
     return $result;
@@ -112,7 +112,7 @@ class DataMapperService
   {
     $productData = [];
     foreach ($product->get_data() as $key => $value) {
-      $productData[$key] = $value;
+      if ($value != '') $productData[$key] = $value;
     }
 
     $mapping = $this->config->getMapping('product');
@@ -122,24 +122,30 @@ class DataMapperService
     ];
 
     foreach ($mapping as $key => $value) {
-      switch($value) {
-        case 'quantity':
-          $result[$key] = $cart_item['quantity'];
-          break;
-        case 'image_id':
-          $result[$key] = wp_get_attachment_image_url($productData[$value]);
-          break;
-        case 'length':
-        case 'width':
-        case 'height':
-          $result['measurements'] = $this->mapMeasurement($value, $productData[$value], $result['measurements'], get_option('zonos_length_unit_measure'));
-          break;
-        case 'weight':
-          $result['measurements'] = $this->mapMeasurement($value, $productData[$value], $result['measurements'], get_option('zonos_weight_unit_measure'));
-          break;
-        default:
-          $result = $this->mapByValue($key, $value, $result, $product, $productData);
-          break;
+      if ($value != '') {
+
+        switch ($value) {
+          case 'quantity':
+            $result[$key] = $cart_item['quantity'];
+            break;
+          case 'image_id':
+            $imageUrl = wp_get_attachment_image_url($productData[$value]);
+            if ($imageUrl != false) {
+              $result[$key] = $imageUrl;
+            }
+            break;
+          case 'length':
+          case 'width':
+          case 'height':
+            $result['measurements'] = $this->mapMeasurement($value, $productData[$value], $result['measurements'], get_option('zonos_length_unit_measure'));
+            break;
+          case 'weight':
+            $result['measurements'] = $this->mapMeasurement($value, $productData[$value], $result['measurements'], get_option('zonos_weight_unit_measure'));
+            break;
+          default:
+            $result = $this->mapByValue($key, $value, $result, $product, $productData);
+            break;
+        }
       }
     }
 
