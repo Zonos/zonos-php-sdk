@@ -52,12 +52,14 @@ class DataMapperService
       "height" => "HEIGHT",
     ];
     $result = $measurement ?? [];
-    array_push($result, array(
-      "source" => "USER_PROVIDED",
-      "type" => $valueToType[$key],
-      "unitOfMeasure" => $unit,
-      "value" => +$value,
-    ));
+    if ($value) {
+      $result[] = array(
+        "source" => "USER_PROVIDED",
+        "type" => $valueToType[$key],
+        "unitOfMeasure" => $unit,
+        "value" => (float)$value,
+      );
+    }
 
     return $result;
   }
@@ -66,7 +68,7 @@ class DataMapperService
   {
     $productAttributes = [];
     foreach ($attributes as $attribute) {
-      array_push($productAttributes, array("key" => $attribute, "value" => $product->get_attribute($attribute)));
+      $productAttributes[] = array("key" => $attribute, "value" => $product->get_attribute($attribute));
     }
 
     return $productAttributes;
@@ -84,7 +86,9 @@ class DataMapperService
 
     switch ($key) {
       case 'attributes':
-        $result[$key] = $this->mapProductAttributes(explode(',', $value), $product);
+        if ($value) {
+          $result[$key] = $this->mapProductAttributes(explode(',', $value), $product);
+        }
         return $result;
       case 'currencyCode':
         $result[$key] = $value;
