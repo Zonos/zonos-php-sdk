@@ -2,6 +2,8 @@
 
 namespace Zonos\ZonosSdk\Data;
 
+use Zonos\ZonosSdk\Data\Enums\OrderStatus;
+
 class Order
 {
 
@@ -17,7 +19,9 @@ class Order
     public ?Root            $root,
     /** @var ShipmentRating[] $shipmentRatings */
     public array            $shipmentRatings,
-    public string           $status,
+    public OrderStatus      $status,
+    /** @var Shipment[] $shipments */
+    public array            $shipments,
   ) {
   }
 
@@ -33,7 +37,8 @@ class Order
       'parties' => array_map(fn(Party $party) => $party->toArray(), $this->parties),
       'root' => $this->root?->toArray(),
       'shipmentRatings' => array_map(fn(ShipmentRating $shipmentRating) => $shipmentRating->toArray(), $this->shipmentRatings),
-      'status' => $this->status
+      'status' => $this->status->value,
+      'shipments' => array_map(fn(Shipment $shipment) => $shipment->toArray(), $this->shipments),
     ];
   }
 
@@ -57,7 +62,11 @@ class Order
         fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
         $data['shipmentRatings'] ?? []
       ) ?? [],
-      $data['status'] ?? '',
+      OrderStatus::from($data['status'] ?? OrderStatus::OPEN->value),
+      array_map(
+        fn(array $shipment) => Shipment::fromArray($shipment),
+        $data['shipments'] ?? []
+      ) ?? [],
     );
   }
 }

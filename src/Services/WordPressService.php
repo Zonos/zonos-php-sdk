@@ -4,6 +4,7 @@ namespace Zonos\ZonosSdk\Services;
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Data\Enums\OrderStatus;
 use Zonos\ZonosSdk\Data\Enums\PartyType;
 use Zonos\ZonosSdk\Data\ExchangeRate;
 use Zonos\ZonosSdk\Data\Item;
@@ -62,7 +63,7 @@ class WordPressService extends AbstractZonosService
    */
   public function storeOrder(Order $order_data): \WC_Order
   {
-    $this->validateExistingOrder($order_data->id);
+    $this->validateExistingOrder($order_data->id, false);
 
     /** @var \WC_Order $wooOrder */
     $wooOrder = null;
@@ -85,13 +86,48 @@ class WordPressService extends AbstractZonosService
     }
   }
 
+  public function updateOrder(Order $order_data): \WC_Order
+  {
+    try {
+      /** @var \WC_Order $wooOrder */
+      $wooOrder = $this->validateExistingOrder($order_data->id, true);
+      if (!$wooOrder) {
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$order_data->id}");
+      }
+
+      $updates = [];
+
+      if ($this->updateOrderTrackingNumbers($wooOrder, $order_data->shipments)) {
+        $updates[] = 'tracking numbers';
+      }
+
+      if ($this->updateOrderStatus($wooOrder, $order_data->status)) {
+        $updates[] = sprintf('status to %s', $order_data->status->value);
+      }
+
+      if (!empty($updates)) {
+        $wooOrder->add_order_note(
+          sprintf('Zonos order updated: %s', implode(', ', $updates)),
+          false
+        );
+      }
+
+      $wooOrder->save();
+      return $wooOrder;
+    } catch (\Exception $e) {
+      throw new InvalidArgumentException("Failed to update order: " . $e->getMessage());
+    }
+  }
+
   /**
-   * Validates if the order should be created
+   * Validates order existence and returns the order if found
    *
    * @param string $zonos_order_id The order ID
-   * @throws InvalidArgumentException If the order exists
+   * @param bool $should_exist Whether the order should exist (true for update, false for create)
+   * @return \WC_Order|null Returns the order if should_exist is true and order is found, null otherwise
+   * @throws InvalidArgumentException If order existence doesn't match should_exist parameter
    */
-  private function validateExistingOrder(string $zonos_order_id): void
+  private function validateExistingOrder(string $zonos_order_id, bool $should_exist = false): ?\WC_Order
   {
     $existing_orders = wc_get_orders(
       [
@@ -101,9 +137,17 @@ class WordPressService extends AbstractZonosService
       ]
     );
 
-    if (!empty($existing_orders)) {
+    $order_exists = !empty($existing_orders);
+
+    if ($should_exist && !$order_exists) {
+      throw new InvalidArgumentException("Order with Zonos ID {$zonos_order_id} not found");
+    }
+
+    if (!$should_exist && $order_exists) {
       throw new InvalidArgumentException("Order with Zonos ID {$zonos_order_id} already exists");
     }
+
+    return $order_exists ? $existing_orders[0] : null;
   }
 
   /**
@@ -307,5 +351,92 @@ class WordPressService extends AbstractZonosService
     $fee->set_total($convertAmount($amount));
     $fee->set_tax_status('none');
     $wooOrder->add_item($fee);
+  }
+
+  /**
+   * Updates tracking numbers for an order
+   *
+   * @param \WC_Order $wooOrder The WooCommerce order
+   * @param array $shipments The shipments array from Zonos order
+   * @return bool Whether any tracking numbers were added
+   */
+  private function updateOrderTrackingNumbers(\WC_Order $wooOrder, array $shipments): bool
+  {
+    if (empty($shipments)) {
+      return false;
+    }
+
+    $new_tracking_numbers = [];
+    foreach ($shipments as $shipment) {
+      foreach ($shipment->trackingDetails as $tracking_detail) {
+        $new_tracking_numbers[] = wc_clean($tracking_detail->number);
+      }
+    }
+
+    $existing_tracking_string = $wooOrder->get_meta('zonos_tracking_numbers', true);
+    $existing_tracking_numbers = !empty($existing_tracking_string)
+      ? array_map('trim', explode(',', $existing_tracking_string))
+      : [];
+
+    sort($new_tracking_numbers);
+    sort($existing_tracking_numbers);
+
+    if ($new_tracking_numbers !== $existing_tracking_numbers) {
+      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $new_tracking_numbers));
+
+      $added_numbers = array_diff($new_tracking_numbers, $existing_tracking_numbers);
+      if (!empty($added_numbers)) {
+        $wooOrder->add_order_note(
+          sprintf(
+            'New tracking number(s) added: %s',
+            implode(', ', $added_numbers)
+          ),
+          false
+        );
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Maps Zonos status to WooCommerce status
+   *
+   * @param OrderStatus $zonos_status The Zonos order status
+   * @return string The WooCommerce status
+   */
+  private function mapOrderStatus(OrderStatus $zonos_status): string
+  {
+    return match ($zonos_status) {
+      OrderStatus::COMPLETED => 'wc-completed',
+      OrderStatus::CANCELED => 'wc-cancelled',
+      OrderStatus::FRAUD_HOLD => 'wc-on-hold',
+      OrderStatus::PAYMENT_FAILED => 'wc-failed',
+      OrderStatus::PAYMENT_PENDING => 'wc-pending',
+      OrderStatus::PARTIALLY_SHIPPED => 'wc-processing',
+      OrderStatus::IN_TRANSIT_TO_CONSOLIDATION_CENTER => 'wc-processing',
+      OrderStatus::OPEN => 'wc-processing',
+    };
+  }
+
+  /**
+   * Updates the order status if changed
+   *
+   * @param \WC_Order $wooOrder The WooCommerce order
+   * @param OrderStatus $new_status The new status from Zonos
+   * @return bool Whether the status was updated
+   */
+  private function updateOrderStatus(\WC_Order $wooOrder, OrderStatus $new_status): bool
+  {
+    $new_wc_status = $this->mapOrderStatus($new_status);
+    $current_status = 'wc-' . $wooOrder->get_status();
+
+    if ($current_status !== $new_wc_status) {
+      $wooOrder->set_status($new_wc_status, '', true);
+      return true;
+    }
+
+    return false;
   }
 }
