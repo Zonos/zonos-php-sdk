@@ -4,12 +4,12 @@ namespace Zonos\ZonosSdk\Services;
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\ZonosConnector;
-use Zonos\ZonosSdk\Data\Enums\OrderStatus;
-use Zonos\ZonosSdk\Data\Enums\PartyType;
-use Zonos\ZonosSdk\Data\ExchangeRate;
-use Zonos\ZonosSdk\Data\Item;
-use Zonos\ZonosSdk\Data\Order;
-use Zonos\ZonosSdk\Data\Party;
+use Zonos\ZonosSdk\Data\Checkout\Enums\OrderStatus;
+use Zonos\ZonosSdk\Data\Checkout\Enums\PartyType;
+use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
+use Zonos\ZonosSdk\Data\Checkout\Item;
+use Zonos\ZonosSdk\Data\Checkout\Order;
+use Zonos\ZonosSdk\Data\Checkout\Party;
 
 /**
  * Service for handling WordPress-specific operations

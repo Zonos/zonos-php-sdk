@@ -2,8 +2,8 @@
 
 namespace Zonos\ZonosSdk\Services;
 
-use Zonos\ZonosSdk\Connectors\ZonosConnector;
-use Zonos\ZonosSdk\Data\Order;
+use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
+use Zonos\ZonosSdk\Data\Checkout\Order;
 
 /**
  * Abstract class for Zonos services

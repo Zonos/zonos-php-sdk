@@ -3,7 +3,7 @@
 namespace Zonos\ZonosSdk\Services;
 
 use Zonos\ZonosSdk\Enums\ZonosPlatformType;
-use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 
 /**
  * Factory class for creating Zonos service instances

@@ -92,6 +92,9 @@ class GqlBuilder
     $args = $this->formatArguments($this->arguments);
     $fields = $this->formatFields($this->fields);
 
+    $args = str_replace('"LIVE"', 'LIVE', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PUBLIC_TOKEN"', 'PUBLIC_TOKEN', $args); // TODO: Revisar esto con Hiram
+
     return <<<gql
 		{$this->type}{$alias} {
 			{$this->name}{$args} {
