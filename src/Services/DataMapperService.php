@@ -64,17 +64,21 @@ class DataMapperService
     return $result;
   }
 
-  private function mapProductAttributes($attributes, $product)
+  private function mapProductAttributes($attributes, $product, $cart_item)
   {
     $productAttributes = [];
+    $variation = $cart_item['variation'];
     foreach ($attributes as $attribute) {
-      $productAttributes[] = array("key" => $attribute, "value" => $product->get_attribute($attribute));
+      $productAttributes[] = array(
+        "key" => $attribute,
+        "value" => $variation ? $variation['attribute_pa_'.$attribute] : $product->get_attribute($attribute),
+      );
     }
 
     return $productAttributes;
   }
 
-  private function mapByValue($key, $value, $result, $product, $productData)
+  private function mapByValue($key, $value, $result, $product, $productData, $cart_item)
   {
     if ($value && str_contains($value, '.')) {
       $path = explode('.', $value);
@@ -87,7 +91,7 @@ class DataMapperService
     switch ($key) {
       case 'attributes':
         if ($value) {
-          $result[$key] = $this->mapProductAttributes(explode(',', $value), $product);
+          $result[$key] = $this->mapProductAttributes(explode(',', $value), $product, $cart_item);
         }
         return $result;
       case 'currencyCode':
@@ -143,7 +147,7 @@ class DataMapperService
             $result['measurements'] = $this->mapMeasurement($value, $productData[$value], $result['measurements'], get_option('zonos_weight_unit_measure'));
             break;
           default:
-            $result = $this->mapByValue($key, $value, $result, $product, $productData);
+            $result = $this->mapByValue($key, $value, $result, $product, $productData, $cart_item);
             break;
         }
       }
