@@ -19,7 +19,7 @@ class OrderUpdateAccountOrderNumberRequest extends PendingZonosRequest
     parent::__construct($connector, GqlBuilder::make('mutation', 'orderUpdateAccountOrderNumber', $args));
   }
 
-  public function get(string ...$fields): Order
+  public function get(string ...$fields): ?Order
   {
     return $this->response(...$fields)->resolve();
   }

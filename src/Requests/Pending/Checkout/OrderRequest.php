@@ -19,7 +19,7 @@ class OrderRequest extends PendingZonosRequest
     parent::__construct($connector, GqlBuilder::make('query', 'order', $args));
   }
 
-  public function get(string ...$fields): Order
+  public function get(string ...$fields): ?Order
   {
     return $this->response(...$fields)->resolve();
   }

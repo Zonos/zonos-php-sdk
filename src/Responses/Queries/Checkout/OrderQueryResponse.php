@@ -7,8 +7,12 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class OrderQueryResponse extends ZonosResponse
 {
-  public function resolve(): Order
+  public function resolve(): ?Order
   {
-    return Order::fromArray($this->json('data.order'));
+    $orderData = $this->json('data.order');
+    if ($orderData === null) {
+      return null;
+    }
+    return Order::fromArray($orderData);
   }
 }

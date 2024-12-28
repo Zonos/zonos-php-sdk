@@ -7,8 +7,12 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class OrderUpdateAccountOrderNumberMutationResponse extends ZonosResponse
 {
-  public function resolve(): Order
+  public function resolve(): ?Order
   {
-    return Order::fromArray($this->json('data.orderUpdateAccountOrderNumber'));
+    $orderData = $this->json('data.orderUpdateAccountOrderNumber');
+    if ($orderData === null) {
+      return null;
+    }
+    return Order::fromArray($orderData);
   }
 }
