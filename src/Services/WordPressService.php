@@ -3,7 +3,7 @@
 namespace Zonos\ZonosSdk\Services;
 
 use InvalidArgumentException;
-use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Data\Checkout\Enums\OrderStatus;
 use Zonos\ZonosSdk\Data\Checkout\Enums\PartyType;
 use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
