@@ -2,11 +2,14 @@
 
 namespace Zonos\ZonosSdk\Data\Checkout;
 
+use Zonos\ZonosSdk\Data\Checkout\Attribute;
+
 class Item
 {
 
   public function __construct(
     public float  $amount,
+    public array $attributes,
     public string $currencyCode,
     public string $productId,
     public int    $quantity,
@@ -19,6 +22,7 @@ class Item
   {
     return [
       'amount' => $this->amount,
+      'attributes' => array_map(fn(Attribute $attribute) => $attribute->toArray(), $this->attributes),
       'currencyCode' => $this->currencyCode,
       'productId' => $this->productId,
       'quantity' => $this->quantity,
@@ -30,6 +34,10 @@ class Item
   {
     return new self(
       (float)($data['amount']) ?? 0.0,
+      array_map(
+        fn(array $attribute) => Attribute::fromArray($attribute),
+        $data['attributes'] ?? []
+      ) ?? [],
       $data['currencyCode'] ?? '',
       $data['productId'] ?? '',
       $data['quantity'] ?? 0,

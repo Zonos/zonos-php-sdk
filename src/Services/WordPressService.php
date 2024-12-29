@@ -192,7 +192,7 @@ class WordPressService extends AbstractZonosService
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
 
-      $wooOrder->add_product(
+      $item_id = $wooOrder->add_product(
         $product,
         $item->quantity,
         [
@@ -200,6 +200,15 @@ class WordPressService extends AbstractZonosService
           'total' => $item->amount ?? $product->get_price(),
         ]
       );
+      
+      $order_item = $wooOrder->get_item($item_id);
+      foreach ($item->attributes as $attribute) {
+        $taxonomy = wc_attribute_taxonomy_name($attribute->key);
+        $attribute_name = wc_attribute_label($taxonomy) ?? $attribute->key;
+        $attribute_value = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
+        $order_item->add_meta_data($attribute_name, $attribute_value);
+      }
+      $order_item->save();
     }
   }
 
