@@ -7,21 +7,21 @@ use Zonos\ZonosSdk\Connectors\Auth\AuthConnector;
 use Zonos\ZonosSdk\Utils\GqlBuilder;
 
 /**
- * Abstract class for pending requests in the Zonos SDK
+ * Abstract class for pending auth requests in the Zonos SDK
  */
 abstract class PendingAuthRequest
 {
   protected const DEFAULT_ATTRIBUTES = [];
 
   /**
-   * Constructor for the PendingZonosRequest
+   * Constructor for the PendingAuthRequest
    *
-   * @param AuthConnector $connector The connector instance
-   * @param GqlBuilder $query The query instance
+   * @param AuthConnector $connector The auth connector instance
+   * @param GqlBuilder $query The GraphQL query builder instance
    */
   public function __construct(
-    protected AuthConnector  $connector,
-    protected GqlBuilder     $query,
+    protected AuthConnector $connector,
+    protected GqlBuilder    $query,
   ) {
   }
 

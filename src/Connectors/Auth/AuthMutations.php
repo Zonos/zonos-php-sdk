@@ -10,6 +10,12 @@ use Zonos\ZonosSdk\Requests\Pending\Auth\CredentialCreateRequest;
  */
 trait AuthMutations
 {
+  /**
+   * Create a new credential
+   *
+   * @param CredentialCreateInput $input The input data for creating a credential
+   * @return CredentialCreateRequest A pending request for credential creation
+   */
   public function credentialCreate(CredentialCreateInput $input): CredentialCreateRequest
   {
     return new CredentialCreateRequest($this, ['input' => $input]);

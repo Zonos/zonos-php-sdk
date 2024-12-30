@@ -27,11 +27,11 @@ class Person
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['companyName'] ?? '',
-      $data['email'] ?? '',
-      $data['firstName'] ?? '',
-      $data['lastName'] ?? '',
-      $data['phone'] ?? '',
+      companyName: $data['companyName'] ?? '',
+      email:       $data['email'] ?? '',
+      firstName:   $data['firstName'] ?? '',
+      lastName:    $data['lastName'] ?? '',
+      phone:       $data['phone'] ?? '',
     );
   }
 }

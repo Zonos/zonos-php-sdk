@@ -29,12 +29,12 @@ class Location
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['administrativeArea'] ?? '',
-      $data['countryCode'] ?? '',
-      $data['line1'] ?? '',
-      $data['line2'] ?? '',
-      $data['locality'] ?? '',
-      $data['postalCode'] ?? '',
+      administrativeArea: $data['administrativeArea'] ?? '',
+      countryCode:        $data['countryCode'] ?? '',
+      line1:              $data['line1'] ?? '',
+      line2:              $data['line2'] ?? '',
+      locality:           $data['locality'] ?? '',
+      postalCode:         $data['postalCode'] ?? '',
     );
   }
 }

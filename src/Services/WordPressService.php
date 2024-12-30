@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Services;
 
 use InvalidArgumentException;
+use RuntimeException;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Data\Checkout\Enums\OrderStatus;
 use Zonos\ZonosSdk\Data\Checkout\Enums\PartyType;
@@ -12,7 +13,10 @@ use Zonos\ZonosSdk\Data\Checkout\Order;
 use Zonos\ZonosSdk\Data\Checkout\Party;
 
 /**
- * Service for handling WordPress-specific operations
+ * WordPress-specific implementation of Zonos service
+ *
+ * Handles integration between Zonos and WooCommerce/WordPress,
+ * including order creation, updates, and data mapping.
  */
 class WordPressService extends AbstractZonosService
 {
@@ -23,30 +27,30 @@ class WordPressService extends AbstractZonosService
    */
   public function __construct(
     ZonosConnector    $connector,
-    DataMapperService $data_mapper_service
+    DataMapperService $dataMapperService
   ) {
-    parent::__construct($connector, $data_mapper_service);
+    parent::__construct($connector, $dataMapperService);
   }
 
   /**
    * Export a WooCommerce order from the WordPress database
    * in the Zonos Format
    *
-   * @return array Array of mapped product data
+   * @return array<string, mixed> The order data in Zonos format
+   * @throws RuntimeException When WooCommerce is not active
    */
   public function exportOrder(): array
   {
     if (!function_exists('WC')) {
-      throw new \RuntimeException('WooCommerce is not active');
+      throw new RuntimeException('WooCommerce is not active');
     }
 
     $items = [];
     $cart = WC()->cart;
 
-    foreach ($cart->get_cart() as $cart_item) {
-      $product = wc_get_product($cart_item['product_id']);
-
-      $mappedProduct = $this->data_mapper_service->mapProductData($cart_item, $product);
+    foreach ($cart->get_cart() as $cartItem) {
+      $product = wc_get_product($cartItem['product_id']);
+      $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
 
       array_push($items, $mappedProduct);
     }
@@ -55,24 +59,29 @@ class WordPressService extends AbstractZonosService
   }
 
   /**
-   * Store a WooCommerce order in the WordPress database
+   * Store a Zonos order in WooCommerce
    *
-   * @param Order $order_data Order data with required fields
-   * @return \WC_Order The created WooCommerce order object
-   * @throws InvalidArgumentException
+   * @param Order $orderData The order data from Zonos
+   * @return \WC_Order The created WooCommerce order
+   * @throws InvalidArgumentException When order creation fails
+   * @throws RuntimeException When WooCommerce is not active
    */
-  public function storeOrder(Order $order_data): \WC_Order
+  public function storeOrder(Order $orderData): \WC_Order
   {
-    $this->validateExistingOrder($order_data->id, false);
+    if (!function_exists('WC')) {
+      throw new RuntimeException('WooCommerce is not active');
+    }
 
-    /** @var \WC_Order $wooOrder */
+    $this->validateExistingOrder($orderData->id, false);
+
+    /** @var \WC_Order|null $wooOrder */
     $wooOrder = null;
 
     try {
-      $wooOrder = $this->createBaseOrder($order_data->id);
-      $this->addOrderItems($wooOrder, $order_data->items);
-      $this->setOrderAddresses($wooOrder, $order_data->parties);
-      $this->processOrderTotals($wooOrder, $order_data);
+      $wooOrder = $this->createBaseOrder($orderData->id);
+      $this->addOrderItems($wooOrder, $orderData->items);
+      $this->setOrderAddresses($wooOrder, $orderData->parties);
+      $this->processOrderTotals($wooOrder, $orderData);
 
       $wooOrder->calculate_totals();
       $wooOrder->save();
@@ -82,27 +91,39 @@ class WordPressService extends AbstractZonosService
       if ($wooOrder !== null) {
         $wooOrder->delete(true);
       }
-      throw $e;
+      throw new InvalidArgumentException('Failed to create order: ' . $e->getMessage());
     }
   }
 
-  public function updateOrder(Order $order_data): \WC_Order
+  /**
+   * Update an existing WooCommerce order with Zonos data
+   *
+   * @param Order $orderData The updated order data from Zonos
+   * @return \WC_Order The updated WooCommerce order
+   * @throws InvalidArgumentException When order update fails
+   * @throws RuntimeException When WooCommerce is not active
+   */
+  public function updateOrder(Order $orderData): \WC_Order
   {
+    if (!function_exists('WC')) {
+      throw new RuntimeException('WooCommerce is not active');
+    }
+
     try {
-      /** @var \WC_Order $wooOrder */
-      $wooOrder = $this->validateExistingOrder($order_data->id, true);
+      /** @var \WC_Order|null $wooOrder */
+      $wooOrder = $this->validateExistingOrder($orderData->id, true);
       if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$order_data->id}");
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$orderData->id}");
       }
 
       $updates = [];
 
-      if ($this->updateOrderTrackingNumbers($wooOrder, $order_data->shipments)) {
+      if ($this->updateOrderTrackingNumbers($wooOrder, $orderData->shipments)) {
         $updates[] = 'tracking numbers';
       }
 
-      if ($this->updateOrderStatus($wooOrder, $order_data->status)) {
-        $updates[] = sprintf('status to %s', $order_data->status->value);
+      if ($this->updateOrderStatus($wooOrder, $orderData->status)) {
+        $updates[] = sprintf('status to %s', $orderData->status->value);
       }
 
       if (!empty($updates)) {
@@ -122,42 +143,42 @@ class WordPressService extends AbstractZonosService
   /**
    * Validates order existence and returns the order if found
    *
-   * @param string $zonos_order_id The order ID
-   * @param bool $should_exist Whether the order should exist (true for update, false for create)
+   * @param string $zonosOrderId The order ID
+   * @param bool $shouldExist Whether the order should exist (true for update, false for create)
    * @return \WC_Order|null Returns the order if should_exist is true and order is found, null otherwise
    * @throws InvalidArgumentException If order existence doesn't match should_exist parameter
    */
-  private function validateExistingOrder(string $zonos_order_id, bool $should_exist = false): ?\WC_Order
+  private function validateExistingOrder(string $zonosOrderId, bool $shouldExist = false): ?\WC_Order
   {
     $existing_orders = wc_get_orders(
       [
         'meta_key' => 'zonos_order_id',
-        'meta_value' => $zonos_order_id,
+        'meta_value' => $zonosOrderId,
         'limit' => 1,
       ]
     );
 
-    $order_exists = !empty($existing_orders);
+    $orderExists = !empty($existing_orders);
 
-    if ($should_exist && !$order_exists) {
-      throw new InvalidArgumentException("Order with Zonos ID {$zonos_order_id} not found");
+    if ($shouldExist && !$orderExists) {
+      throw new InvalidArgumentException("Order with Zonos ID {$zonosOrderId} not found");
     }
 
-    if (!$should_exist && $order_exists) {
-      throw new InvalidArgumentException("Order with Zonos ID {$zonos_order_id} already exists");
+    if (!$shouldExist && $orderExists) {
+      throw new InvalidArgumentException("Order with Zonos ID {$zonosOrderId} already exists");
     }
 
-    return $order_exists ? $existing_orders[0] : null;
+    return $orderExists ? $existing_orders[0] : null;
   }
 
   /**
    * Creates the WooCommerce order
    *
-   * @param string $zonos_order_id The order ID
+   * @param string $zonosOrderId The order ID
    * @return \WC_Order The order
    * @throws InvalidArgumentException If order failed to be created
    */
-  private function createBaseOrder(string $zonos_order_id): \WC_Order
+  private function createBaseOrder(string $zonosOrderId): \WC_Order
   {
     $wooOrder = wc_create_order(
       [
@@ -169,7 +190,7 @@ class WordPressService extends AbstractZonosService
       throw new InvalidArgumentException('Failed to create WooCommerce order');
     }
 
-    $wooOrder->update_meta_data('zonos_order_id', $zonos_order_id);
+    $wooOrder->update_meta_data('zonos_order_id', $zonosOrderId);
     $wooOrder->update_meta_data('order_attribution_origin', 'Zonos Checkout');
 
     return $wooOrder;
@@ -192,7 +213,7 @@ class WordPressService extends AbstractZonosService
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
 
-      $item_id = $wooOrder->add_product(
+      $itemId = $wooOrder->add_product(
         $product,
         $item->quantity,
         [
@@ -200,15 +221,15 @@ class WordPressService extends AbstractZonosService
           'total' => $item->amount ?? $product->get_price(),
         ]
       );
-      
-      $order_item = $wooOrder->get_item($item_id);
+
+      $orderItem = $wooOrder->get_item($itemId);
       foreach ($item->attributes as $attribute) {
         $taxonomy = wc_attribute_taxonomy_name($attribute->key);
-        $attribute_name = wc_attribute_label($taxonomy) ?? $attribute->key;
-        $attribute_value = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-        $order_item->add_meta_data($attribute_name, $attribute_value);
+        $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
+        $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
+        $orderItem->add_meta_data($attributeName, $attributeValue);
       }
-      $order_item->save();
+      $orderItem->save();
     }
   }
 
@@ -220,33 +241,33 @@ class WordPressService extends AbstractZonosService
    */
   private function setOrderAddresses(\WC_Order $wooOrder, array $parties): void
   {
-    $billing_party = $this->findPartyByType($parties, PartyType::PAYOR);
-    if ($billing_party !== null) {
-      $wooOrder->set_billing_first_name($billing_party->person?->firstName ?? '');
-      $wooOrder->set_billing_last_name($billing_party->person?->lastName ?? '');
-      $wooOrder->set_billing_company($billing_party->person?->companyName ?? '');
-      $wooOrder->set_billing_address_1($billing_party->location?->line1 ?? '');
-      $wooOrder->set_billing_address_2($billing_party->location?->line2 ?? '');
-      $wooOrder->set_billing_city($billing_party->location?->locality ?? '');
-      $wooOrder->set_billing_state($billing_party->location?->administrativeArea ?? '');
-      $wooOrder->set_billing_postcode($billing_party->location?->postalCode ?? '');
-      $wooOrder->set_billing_country($billing_party->location?->countryCode ?? '');
-      $wooOrder->set_billing_email($billing_party->person?->email ?? '');
-      $wooOrder->set_billing_phone($billing_party->person?->phone ?? '');
+    $billingParty = $this->findPartyByType($parties, PartyType::PAYOR);
+    if ($billingParty !== null) {
+      $wooOrder->set_billing_first_name($billingParty->person?->firstName ?? '');
+      $wooOrder->set_billing_last_name($billingParty->person?->lastName ?? '');
+      $wooOrder->set_billing_company($billingParty->person?->companyName ?? '');
+      $wooOrder->set_billing_address_1($billingParty->location?->line1 ?? '');
+      $wooOrder->set_billing_address_2($billingParty->location?->line2 ?? '');
+      $wooOrder->set_billing_city($billingParty->location?->locality ?? '');
+      $wooOrder->set_billing_state($billingParty->location?->administrativeArea ?? '');
+      $wooOrder->set_billing_postcode($billingParty->location?->postalCode ?? '');
+      $wooOrder->set_billing_country($billingParty->location?->countryCode ?? '');
+      $wooOrder->set_billing_email($billingParty->person?->email ?? '');
+      $wooOrder->set_billing_phone($billingParty->person?->phone ?? '');
     }
 
-    $shipping_party = $this->findPartyByType($parties, PartyType::DESTINATION);
-    if ($shipping_party !== null) {
-      $wooOrder->set_shipping_first_name($shipping_party->person?->firstName ?? '');
-      $wooOrder->set_shipping_last_name($shipping_party->person?->lastName ?? '');
-      $wooOrder->set_shipping_company($shipping_party->person?->companyName ?? '');
-      $wooOrder->set_shipping_address_1($shipping_party->location?->line1 ?? '');
-      $wooOrder->set_shipping_address_2($shipping_party->location?->line2 ?? '');
-      $wooOrder->set_shipping_city($shipping_party->location?->locality ?? '');
-      $wooOrder->set_shipping_state($shipping_party->location?->administrativeArea ?? '');
-      $wooOrder->set_shipping_postcode($shipping_party->location?->postalCode ?? '');
-      $wooOrder->set_shipping_country($shipping_party->location?->countryCode ?? '');
-      $wooOrder->set_shipping_phone($shipping_party->person?->phone ?? '');
+    $shippingParty = $this->findPartyByType($parties, PartyType::DESTINATION);
+    if ($shippingParty !== null) {
+      $wooOrder->set_shipping_first_name($shippingParty->person?->firstName ?? '');
+      $wooOrder->set_shipping_last_name($shippingParty->person?->lastName ?? '');
+      $wooOrder->set_shipping_company($shippingParty->person?->companyName ?? '');
+      $wooOrder->set_shipping_address_1($shippingParty->location?->line1 ?? '');
+      $wooOrder->set_shipping_address_2($shippingParty->location?->line2 ?? '');
+      $wooOrder->set_shipping_city($shippingParty->location?->locality ?? '');
+      $wooOrder->set_shipping_state($shippingParty->location?->administrativeArea ?? '');
+      $wooOrder->set_shipping_postcode($shippingParty->location?->postalCode ?? '');
+      $wooOrder->set_shipping_country($shippingParty->location?->countryCode ?? '');
+      $wooOrder->set_shipping_phone($shippingParty->person?->phone ?? '');
     }
   }
 
@@ -271,15 +292,15 @@ class WordPressService extends AbstractZonosService
    * Processes the order totals
    *
    * @param \WC_Order $wooOrder The order
-   * @param Order $order_data The order data
+   * @param Order $orderData The order data
    */
-  private function processOrderTotals(\WC_Order $wooOrder, Order $order_data): void
+  private function processOrderTotals(\WC_Order $wooOrder, Order $orderData): void
   {
-    if ($order_data->amountSubtotals === null) {
+    if ($orderData->amountSubtotals === null) {
       return;
     }
 
-    $exchangeRate = $this->getExchangeRate($order_data);
+    $exchangeRate = $this->getExchangeRate($orderData);
     $convertAmount = function (float $amount) use ($exchangeRate): float {
       if ($exchangeRate !== null) {
         return round($amount / $exchangeRate->rate, 2);
@@ -287,31 +308,31 @@ class WordPressService extends AbstractZonosService
       return $amount;
     };
 
-    $wooOrder->set_discount_total($convertAmount($order_data->amountSubtotals->discounts));
-    $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $order_data->currencyCode);
+    $wooOrder->set_discount_total($convertAmount($orderData->amountSubtotals->discounts));
+    $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
 
-    $this->addShippingIfNeeded($wooOrder, $order_data, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Taxes', $order_data->amountSubtotals->taxes, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Duties', $order_data->amountSubtotals->duties, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $order_data->amountSubtotals->fees, $convertAmount);
+    $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
+    $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
   }
 
   /**
    * Gets exchange rate if needed
    *
-   * @param Order $order_data The order data
+   * @param Order $orderData The order data
    * @return ExchangeRate|null The exchange rate object or null
    */
-  private function getExchangeRate(Order $order_data): ?ExchangeRate
+  private function getExchangeRate(Order $orderData): ?ExchangeRate
   {
-    if ($order_data->root === null ||
-    empty($order_data->root->exchangeRates) ||
-    $order_data->currencyCode === reset($order_data->items)->currencyCode ?? '') {
+    if ($orderData->root === null ||
+    empty($orderData->root->exchangeRates) ||
+    $orderData->currencyCode === reset($orderData->items)->currencyCode ?? '') {
       return null;
     }
 
-    foreach ($order_data->root->exchangeRates as $rate) {
-      if ($rate->targetCurrencyCode === $order_data->currencyCode) {
+    foreach ($orderData->root->exchangeRates as $rate) {
+      if ($rate->targetCurrencyCode === $orderData->currencyCode) {
         return $rate;
       }
     }
@@ -323,21 +344,21 @@ class WordPressService extends AbstractZonosService
    * Adds shipping to the order if needed
    *
    * @param \WC_Order $wooOrder The order
-   * @param Order $order_data The order data
+   * @param Order $orderData The order data
    * @param callable $convertAmount The converter
    */
-  private function addShippingIfNeeded(\WC_Order $wooOrder, Order $order_data, callable $convertAmount): void
+  private function addShippingIfNeeded(\WC_Order $wooOrder, Order $orderData, callable $convertAmount): void
   {
-    if ($order_data->amountSubtotals->shipping <= 0) {
+    if ($orderData->amountSubtotals->shipping <= 0) {
       return;
     }
 
-    $shipping_method = !empty($order_data->shipmentRatings) ? $order_data->shipmentRatings[0] : null;
-    $shipping_item = new \WC_Order_Item_Shipping();
-    $shipping_item->set_method_title($shipping_method?->displayName ?? 'Shipping');
-    $shipping_item->set_method_id($shipping_method?->serviceLevelCode ?? 'default');
-    $shipping_item->set_total($convertAmount($order_data->amountSubtotals->shipping));
-    $wooOrder->add_item($shipping_item);
+    $shippingMethod = !empty($orderData->shipmentRatings) ? $orderData->shipmentRatings[0] : null;
+    $shippingItem = new \WC_Order_Item_Shipping();
+    $shippingItem->set_method_title($shippingMethod?->displayName ?? 'Shipping');
+    $shippingItem->set_method_id($shippingMethod?->serviceLevelCode ?? 'default');
+    $shippingItem->set_total($convertAmount($orderData->amountSubtotals->shipping));
+    $wooOrder->add_item($shippingItem);
   }
 
   /**
@@ -375,30 +396,30 @@ class WordPressService extends AbstractZonosService
       return false;
     }
 
-    $new_tracking_numbers = [];
+    $newTrackingNumbers = [];
     foreach ($shipments as $shipment) {
-      foreach ($shipment->trackingDetails as $tracking_detail) {
-        $new_tracking_numbers[] = wc_clean($tracking_detail->number);
+      foreach ($shipment->trackingDetails as $trackingDetail) {
+        $newTrackingNumbers[] = wc_clean($trackingDetail->number);
       }
     }
 
-    $existing_tracking_string = $wooOrder->get_meta('zonos_tracking_numbers', true);
-    $existing_tracking_numbers = !empty($existing_tracking_string)
-      ? array_map('trim', explode(',', $existing_tracking_string))
+    $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
+    $existingTrackingNumbers = !empty($existingTrackingString)
+      ? array_map('trim', explode(',', $existingTrackingString))
       : [];
 
-    sort($new_tracking_numbers);
-    sort($existing_tracking_numbers);
+    sort($newTrackingNumbers);
+    sort($existingTrackingNumbers);
 
-    if ($new_tracking_numbers !== $existing_tracking_numbers) {
-      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $new_tracking_numbers));
+    if ($newTrackingNumbers !== $existingTrackingNumbers) {
+      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $newTrackingNumbers));
 
-      $added_numbers = array_diff($new_tracking_numbers, $existing_tracking_numbers);
-      if (!empty($added_numbers)) {
+      $addedNumbers = array_diff($newTrackingNumbers, $existingTrackingNumbers);
+      if (!empty($addedNumbers)) {
         $wooOrder->add_order_note(
           sprintf(
             'New tracking number(s) added: %s',
-            implode(', ', $added_numbers)
+            implode(', ', $addedNumbers)
           ),
           false
         );
@@ -412,12 +433,12 @@ class WordPressService extends AbstractZonosService
   /**
    * Maps Zonos status to WooCommerce status
    *
-   * @param OrderStatus $zonos_status The Zonos order status
+   * @param OrderStatus $zonosStatus The Zonos order status
    * @return string The WooCommerce status
    */
-  private function mapOrderStatus(OrderStatus $zonos_status): string
+  private function mapOrderStatus(OrderStatus $zonosStatus): string
   {
-    return match ($zonos_status) {
+    return match ($zonosStatus) {
       OrderStatus::COMPLETED => 'wc-completed',
       OrderStatus::CANCELED => 'wc-cancelled',
       OrderStatus::FRAUD_HOLD => 'wc-on-hold',
@@ -433,16 +454,16 @@ class WordPressService extends AbstractZonosService
    * Updates the order status if changed
    *
    * @param \WC_Order $wooOrder The WooCommerce order
-   * @param OrderStatus $new_status The new status from Zonos
+   * @param OrderStatus $newStatus The new status from Zonos
    * @return bool Whether the status was updated
    */
-  private function updateOrderStatus(\WC_Order $wooOrder, OrderStatus $new_status): bool
+  private function updateOrderStatus(\WC_Order $wooOrder, OrderStatus $newStatus): bool
   {
-    $new_wc_status = $this->mapOrderStatus($new_status);
-    $current_status = 'wc-' . $wooOrder->get_status();
+    $newWcStatus = $this->mapOrderStatus($newStatus);
+    $currentStatus = 'wc-' . $wooOrder->get_status();
 
-    if ($current_status !== $new_wc_status) {
-      $wooOrder->set_status($new_wc_status, '', true);
+    if ($currentStatus !== $newWcStatus) {
+      $wooOrder->set_status($newWcStatus, '', true);
       return true;
     }
 

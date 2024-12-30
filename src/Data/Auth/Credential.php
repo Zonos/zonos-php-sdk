@@ -23,9 +23,9 @@ class Credential
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['organization'] ?? '',
-      $data['id'] ?? '',
-      $data['type'] ?? '',
+      organization: $data['organization'] ?? '',
+      id:           $data['id'] ?? '',
+      type:         $data['type'] ?? '',
     );
   }
 }

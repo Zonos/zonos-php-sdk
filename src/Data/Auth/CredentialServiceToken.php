@@ -21,8 +21,8 @@ class CredentialServiceToken
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['storeId'] ?? '',
-      isset($data['credential']) ? Credential::fromArray($data['credential']) : null,
+      storeId:    $data['storeId'] ?? '',
+      credential: isset($data['credential']) ? Credential::fromArray($data['credential']) : null,
     );
   }
 }

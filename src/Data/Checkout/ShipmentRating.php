@@ -23,8 +23,8 @@ class ShipmentRating
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['displayName'] ?? '',
-      $data['serviceLevelCode'] ?? '',
+      displayName:      $data['displayName'] ?? '',
+      serviceLevelCode: $data['serviceLevelCode'] ?? '',
     );
   }
 }

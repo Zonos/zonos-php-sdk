@@ -16,8 +16,8 @@ abstract class PendingZonosRequest
   /**
    * Constructor for the PendingZonosRequest
    *
-   * @param ZonosConnector $connector The connector instance
-   * @param GqlBuilder $query The query instance
+   * @param ZonosConnector $connector The checkout connector instance
+   * @param GqlBuilder $query The GraphQL query builder instance
    */
   public function __construct(
     protected ZonosConnector $connector,

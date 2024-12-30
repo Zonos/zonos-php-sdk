@@ -21,8 +21,8 @@ class OrderUpdateAccountOrderNumberInput
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['accountOrderNumber'] ?? '',
-      $data['id'] ?? ''
+      accountOrderNumber: $data['accountOrderNumber'] ?? '',
+      id:                 $data['id'] ?? ''
     );
   }
 }

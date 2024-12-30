@@ -23,9 +23,9 @@ class ExchangeRate
   public static function fromArray(array $data): self
   {
     return new self(
-      (float)($data['rate']) ?? 0.0,
-      $data['targetCurrencyCode'] ?? '',
-      $data['sourceCurrencyCode'] ?? '',
+      rate:               (float)($data['rate']) ?? 0.0,
+      targetCurrencyCode: $data['targetCurrencyCode'] ?? '',
+      sourceCurrencyCode: $data['sourceCurrencyCode'] ?? '',
     );
   }
 }

@@ -25,9 +25,9 @@ class Party
   public static function fromArray(array $data): self
   {
     return new self(
-      isset($data['location']) ? Location::fromArray($data['location']) : null,
-      isset($data['person']) ? Person::fromArray($data['person']) : null,
-      PartyType::from($data['type'] ?? PartyType::ORIGIN->value),
+      location: isset($data['location']) ? Location::fromArray($data['location']) : null,
+      person:   isset($data['person']) ? Person::fromArray($data['person']) : null,
+      type:     PartyType::from($data['type'] ?? PartyType::ORIGIN->value),
     );
   }
 }

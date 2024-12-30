@@ -13,15 +13,20 @@ trait ZonosQueries
   /**
    * Get checkout settings
    *
-   * @return CheckoutSettingsRequest
+   * @return CheckoutSettingsRequest A pending request for checkout settings
    */
   public function checkoutSettings(): CheckoutSettingsRequest
   {
     return new CheckoutSettingsRequest($this);
   }
 
-
-  public function order($args): OrderRequest
+  /**
+   * Get order information
+   *
+   * @param array<string, mixed> $args The arguments for the order query
+   * @return OrderRequest A pending request for order information
+   */
+  public function order(array $args): OrderRequest
   {
     return new OrderRequest($this, $args);
   }

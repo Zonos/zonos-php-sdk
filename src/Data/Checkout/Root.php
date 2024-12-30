@@ -20,10 +20,10 @@ class Root
   public static function fromArray(array $data): self
   {
     return new self(
-      array_map(
-        fn(array $exchangeRate) => ExchangeRate::fromArray($exchangeRate),
-        $data['exchangeRates'] ?? []
-      ) ?? [],
+      exchangeRates: array_map(
+                       fn(array $exchangeRate) => ExchangeRate::fromArray($exchangeRate),
+                       $data['exchangeRates'] ?? []
+                     ) ?? [],
     );
   }
 }

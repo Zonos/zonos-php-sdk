@@ -7,8 +7,12 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class CheckoutSettingsQueryResponse extends ZonosResponse
 {
-    public function resolve(): CheckoutSettings
-    {
-        return CheckoutSettings::fromArray($this->json('data.checkoutSettings'));
+  public function resolve(): ?CheckoutSettings
+  {
+    $checkoutSettingsData = $this->json('data.checkoutSettings');
+    if ($checkoutSettingsData === null) {
+      return null;
     }
+    return CheckoutSettings::fromArray($checkoutSettingsData);
+  }
 }

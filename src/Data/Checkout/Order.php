@@ -45,28 +45,28 @@ class Order
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['accountOrderNumber'] ?? '',
-      isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
-      $data['currencyCode'] ?? '',
-      $data['id'] ?? '',
-      array_map(
-        fn(array $item) => Item::fromArray($item),
-        $data['items'] ?? []
-      ) ?? [],
-      array_map(
-        fn(array $party) => Party::fromArray($party),
-        $data['parties'] ?? []
-      ) ?? [],
-      isset($data['root']) ? Root::fromArray($data['root']) : null,
-      array_map(
-        fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
-        $data['shipmentRatings'] ?? []
-      ) ?? [],
-      OrderStatus::from($data['status'] ?? OrderStatus::OPEN->value),
-      array_map(
-        fn(array $shipment) => Shipment::fromArray($shipment),
-        $data['shipments'] ?? []
-      ) ?? [],
+      accountOrderNumber: $data['accountOrderNumber'] ?? '',
+      amountSubtotals:    isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
+      currencyCode:       $data['currencyCode'] ?? '',
+      id:                 $data['id'] ?? '',
+      items:              array_map(
+                            fn(array $item) => Item::fromArray($item),
+                            $data['items'] ?? []
+                          ) ?? [],
+      parties:            array_map(
+                            fn(array $party) => Party::fromArray($party),
+                            $data['parties'] ?? []
+                          ) ?? [],
+      root:               isset($data['root']) ? Root::fromArray($data['root']) : null,
+      shipmentRatings:    array_map(
+                            fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
+                            $data['shipmentRatings'] ?? []
+                          ) ?? [],
+      status:             OrderStatus::from($data['status'] ?? OrderStatus::OPEN->value),
+      shipments:          array_map(
+                            fn(array $shipment) => Shipment::fromArray($shipment),
+                            $data['shipments'] ?? []
+                          ) ?? [],
     );
   }
 }

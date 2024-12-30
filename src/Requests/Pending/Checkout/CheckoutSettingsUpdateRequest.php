@@ -10,46 +10,46 @@ use Zonos\ZonosSdk\Utils\GqlBuilder;
 
 class CheckoutSettingsUpdateRequest extends PendingZonosRequest
 {
-    protected const DEFAULT_ATTRIBUTES = [
-        'allowedCharacterSets',
-        'allowedDomains',
-        'createdAt',
-        'createdBy',
-        'id',
-        'mode',
-        'organization',
-        'placeOrderButtonSelector',
-        'status',
-        'subscriptionStatus',
-        'successBehavior',
-        'successRedirectUrl',
-        'updatedAt',
-        'updatedBy',
-        'visibilityStatus',
-        'externalServiceTokens.token',
-        'externalServiceTokens.type'
-    ];
+  protected const DEFAULT_ATTRIBUTES = [
+    'allowedCharacterSets',
+    'allowedDomains',
+    'createdAt',
+    'createdBy',
+    'id',
+    'mode',
+    'organization',
+    'placeOrderButtonSelector',
+    'status',
+    'subscriptionStatus',
+    'successBehavior',
+    'successRedirectUrl',
+    'updatedAt',
+    'updatedBy',
+    'visibilityStatus',
+    'externalServiceTokens.token',
+    'externalServiceTokens.type'
+  ];
 
-    public function __construct(ZonosConnector $connector, public array $args = [])
-    {
-        parent::__construct($connector, GqlBuilder::make('mutation', 'checkoutSettingsUpdate', $args));
-    }
+  public function __construct(ZonosConnector $connector, public array $args = [])
+  {
+    parent::__construct($connector, GqlBuilder::make('mutation', 'checkoutSettingsUpdate', $args));
+  }
 
-    public function get(string ...$fields): CheckoutSettings
-    {
-        $resolved = $this->response(...$fields)->resolve();
+  public function get(string ...$fields): ?CheckoutSettings
+  {
+    $resolved = $this->response(...$fields)->resolve();
 
-        return $resolved;
-    }
+    return $resolved;
+  }
 
-    public function response(string ...$fields): CheckoutSettingsMutationResponse
-    {
-        $query = $this->query->withFields($this->normalizeFields($fields));
+  public function response(string ...$fields): CheckoutSettingsMutationResponse
+  {
+    $query = $this->query->withFields($this->normalizeFields($fields));
 
-        $response = $this->connector->send(new ZonosRequest(CheckoutSettingsMutationResponse::class, (string) $query))->throw();
-        assert($response instanceof CheckoutSettingsMutationResponse);
+    $response = $this->connector->send(new ZonosRequest(CheckoutSettingsMutationResponse::class, (string)$query))->throw();
+    assert($response instanceof CheckoutSettingsMutationResponse);
 
-        return $response;
+    return $response;
 
-    }
+  }
 }

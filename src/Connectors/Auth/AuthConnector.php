@@ -1,8 +1,4 @@
 <?php declare(strict_types=1);
-/**
- * Main connector class for interacting with the Auth API
- * Handles authentication and base configuration
- */
 
 namespace Zonos\ZonosSdk\Connectors\Auth;
 
@@ -10,7 +6,9 @@ use Saloon\Http\Connector;
 
 /**
  * Main connector class for interacting with the Auth API
- * Handles authentication and base configuration
+ *
+ * Handles authentication, base configuration, and provides access to
+ * Auth-related queries and mutations through trait implementations.
  */
 class AuthConnector extends Connector
 {
@@ -20,36 +18,36 @@ class AuthConnector extends Connector
   /**
    * Create a new Auth connector instance
    *
-   * @param string $credential_token Authentication token for API access
-   * @param string $base_url Base URL for API endpoints
+   * @param string $credentialToken Authentication token for API access
+   * @param string $baseUrl Base URL for API endpoints
    */
   public function __construct(
-    protected string $credential_token,
-    protected string $base_url,
+    protected string $credentialToken,
+    protected string $baseUrl,
   ) {
   }
 
   /**
-   * Resolve the base URL
+   * Resolve the base URL for API endpoints
    *
-   * @return string
+   * @return string The complete base URL for the API
    */
   public function resolveBaseUrl(): string
   {
-    return $this->base_url;
+    return $this->baseUrl;
   }
 
   /**
-   * Default headers for the connector
+   * Get the default headers for API requests
    *
-   * @return array
+   * @return array<string, string> Array of default headers
    */
   protected function defaultHeaders(): array
   {
     return [
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
-      'credentialToken' => $this->credential_token,
+      'credentialToken' => $this->credentialToken,
       'senderCredential' => 'credential_live_2d26de91-f0ca-4a67-9642-be2db2ded1f6'
     ];
   }

@@ -7,8 +7,12 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class CheckoutSettingsMutationResponse extends ZonosResponse
 {
-    public function resolve(): CheckoutSettings
-    {
-        return CheckoutSettings::fromArray($this->json('data.checkoutSettingsUpdate'));
+  public function resolve(): ?CheckoutSettings
+  {
+    $checkoutSettingsData = $this->json('data.checkoutSettingsUpdate');
+    if ($checkoutSettingsData === null) {
+      return null;
     }
+    return CheckoutSettings::fromArray($checkoutSettingsData);
+  }
 }

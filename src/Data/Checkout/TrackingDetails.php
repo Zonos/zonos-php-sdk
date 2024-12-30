@@ -19,7 +19,7 @@ class TrackingDetails
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['number'] ?? '',
+      number: $data['number'] ?? '',
     );
   }
 }

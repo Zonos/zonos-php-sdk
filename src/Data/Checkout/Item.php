@@ -9,7 +9,7 @@ class Item
 
   public function __construct(
     public float  $amount,
-    public array $attributes,
+    public array  $attributes,
     public string $currencyCode,
     public string $productId,
     public int    $quantity,
@@ -33,15 +33,15 @@ class Item
   public static function fromArray(array $data): self
   {
     return new self(
-      (float)($data['amount']) ?? 0.0,
-      array_map(
-        fn(array $attribute) => Attribute::fromArray($attribute),
-        $data['attributes'] ?? []
-      ) ?? [],
-      $data['currencyCode'] ?? '',
-      $data['productId'] ?? '',
-      $data['quantity'] ?? 0,
-      $data['sku'] ?? '',
+      amount:       (float)($data['amount']) ?? 0.0,
+      attributes:   array_map(
+                      fn(array $attribute) => Attribute::fromArray($attribute),
+                      $data['attributes'] ?? []
+                    ) ?? [],
+      currencyCode: $data['currencyCode'] ?? '',
+      productId:    $data['productId'] ?? '',
+      quantity:     $data['quantity'] ?? 0,
+      sku:          $data['sku'] ?? '',
     );
   }
 }

@@ -20,10 +20,10 @@ class Shipment
   public static function fromArray(array $data): self
   {
     return new self(
-      array_map(
-        fn(array $trackingDetail) => TrackingDetails::fromArray($trackingDetail),
-        $data['trackingDetails'] ?? []
-      ) ?? [],
+      trackingDetails: array_map(
+                         fn(array $trackingDetail) => TrackingDetails::fromArray($trackingDetail),
+                         $data['trackingDetails'] ?? []
+                       ) ?? [],
     );
   }
 }

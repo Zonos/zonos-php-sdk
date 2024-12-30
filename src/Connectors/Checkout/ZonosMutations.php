@@ -15,8 +15,8 @@ trait ZonosMutations
   /**
    * Update checkout settings
    *
-   * @param CheckoutSettingUpdateInput $input The input data for the mutation
-   * @return CheckoutSettingsUpdateRequest
+   * @param CheckoutSettingUpdateInput $input The input data for updating checkout settings
+   * @return CheckoutSettingsUpdateRequest A pending request for settings update
    */
   public function checkoutSettingsUpdate(CheckoutSettingUpdateInput $input): CheckoutSettingsUpdateRequest
   {
@@ -24,10 +24,10 @@ trait ZonosMutations
   }
 
   /**
-   * Update Order Account number
+   * Update order account number
    *
-   * @param OrderUpdateAccountOrderNumberInput $input The input data for the mutation
-   * @return OrderUpdateAccountOrderNumberRequest The order updated
+   * @param OrderUpdateAccountOrderNumberInput $input The input data for updating order number
+   * @return OrderUpdateAccountOrderNumberRequest A pending request for order update
    */
   public function orderUpdateAccountOrderNumber(OrderUpdateAccountOrderNumberInput $input): OrderUpdateAccountOrderNumberRequest
   {

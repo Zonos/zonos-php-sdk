@@ -21,8 +21,8 @@ class Attribute
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['key'],
-      $data['value'],
+      key:   $data['key'],
+      value: $data['value'],
     );
   }
 }

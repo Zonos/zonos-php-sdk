@@ -29,12 +29,12 @@ class AmountSubtotals
   public static function fromArray(array $data): self
   {
     return new self(
-      (float)($data['discounts'] ?? 0.0),
-      (float)($data['duties'] ?? 0.0),
-      (float)($data['fees'] ?? 0.0),
-      (float)($data['items'] ?? 0.0),
-      (float)($data['shipping'] ?? 0.0),
-      (float)($data['taxes'] ?? 0.0),
+      discounts: (float)($data['discounts'] ?? 0.0),
+      duties:    (float)($data['duties'] ?? 0.0),
+      fees:      (float)($data['fees'] ?? 0.0),
+      items:     (float)($data['items'] ?? 0.0),
+      shipping:  (float)($data['shipping'] ?? 0.0),
+      taxes:     (float)($data['taxes'] ?? 0.0),
     );
   }
 }

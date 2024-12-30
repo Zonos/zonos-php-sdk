@@ -5,7 +5,7 @@ namespace Zonos\ZonosSdk\Requests\Inputs\Auth;
 class GetCredentialServiceTokenInput
 {
   public function __construct(
-    public int $storeId,
+    public int    $storeId,
     public string $mode,
   ) {
   }
@@ -21,8 +21,8 @@ class GetCredentialServiceTokenInput
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['storeId'] ?? 0,
-      $data['mode'] ?? ''
+      storeId: $data['storeId'] ?? 0,
+      mode:    $data['mode'] ?? ''
     );
   }
 }

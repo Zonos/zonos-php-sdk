@@ -25,10 +25,10 @@ class CredentialCreateInput
   public static function fromArray(array $data): self
   {
     return new self(
-      $data['name'],
-      $data['organization'],
-      $data['mode'],
-      $data['type'],
+      name:         $data['name'],
+      organization: $data['organization'],
+      mode:         $data['mode'],
+      type:         $data['type'],
     );
   }
 }
