@@ -16,12 +16,13 @@ class DataDogLoggerRequest extends Request implements HasBody
 
   public function __construct(
     protected array $log_body,
-  ){}
+  ) {
+  }
 
   // Define the endpoint
   public function resolveEndpoint(): string
   {
-    return '';
+    return '/api/v2/logs';
   }
 
   // Define the data to send with the request

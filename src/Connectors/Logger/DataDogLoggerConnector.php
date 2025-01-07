@@ -8,7 +8,8 @@ class DataDogLoggerConnector extends Connector
 {
   public function __construct(
     protected string $base_url,
-  ){}
+  ) {
+  }
 
   /**
    * Resolve the base URL
@@ -25,6 +26,8 @@ class DataDogLoggerConnector extends Connector
   {
     return [
       'Accept' => 'application/json',
+      'Content-Type' => 'application/json',
+      'DD-API-KEY' => ''
     ];
   }
 }

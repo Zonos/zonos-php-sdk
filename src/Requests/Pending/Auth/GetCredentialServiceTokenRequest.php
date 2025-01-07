@@ -19,7 +19,7 @@ class GetCredentialServiceTokenRequest extends PendingAuthRequest
     parent::__construct($connector, GqlBuilder::make('query', 'getCredentialServiceToken', $args));
   }
 
-  public function get(string ...$fields): CredentialServiceToken
+  public function get(string ...$fields): ?CredentialServiceToken
   {
     return $this->response(...$fields)->resolve();
   }
