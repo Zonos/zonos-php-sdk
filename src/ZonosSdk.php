@@ -63,13 +63,18 @@ class ZonosSdk
     array             $config = [],
     ZonosPlatformType $platformType = ZonosPlatformType::Default
   ) {
-    $zonosConfig = new ZonosConfig($config);
-    $dataMapperService = new DataMapperService($zonosConfig);
+    $zonosConfig = new ZonosConfig(
+      config: $config
+    );
+
+    $dataMapperService = new DataMapperService(
+      config: $zonosConfig
+    );
 
     $this->logger = new DataDogLogger(
       credentialToken: $credentialToken,
     );
-    
+
     $this->connector = new ZonosConnector(
       credentialToken: $credentialToken,
       baseUrl:         $baseUrl,
@@ -80,8 +85,16 @@ class ZonosSdk
       baseUrl:         $authUrl,
     );
 
-    $this->authService = new ZonosAuthService($zonosConfig, $this->authConnector);
-    $this->service = ZonosServiceFactory::createService($platformType, $this->connector, $dataMapperService);
+    $this->authService = new ZonosAuthService(
+      config:        $zonosConfig,
+      authConnector: $this->authConnector
+    );
+
+    $this->service = ZonosServiceFactory::createService(
+      platformType:      $platformType,
+      connector:         $this->connector,
+      dataMapperService: $dataMapperService,
+    );
   }
 
   /**

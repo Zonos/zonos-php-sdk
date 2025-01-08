@@ -17,7 +17,13 @@ class DataDogLogger
   ) {
   }
 
-  public function sendLog(string $message, string $service)
+  /**
+   * Sends a log message to the DataDog logging service.
+   *
+   * @param string $message The log message to be sent.
+   * @return void
+   */
+  public function sendLog(string $message): void
   {
     $connector = new DataDogLoggerConnector(
       credentialToken: $this->credentialToken,

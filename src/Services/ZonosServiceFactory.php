@@ -29,7 +29,10 @@ class ZonosServiceFactory
     DataMapperService $dataMapperService
   ): AbstractZonosService {
     return match ($platformType) {
-      ZonosPlatformType::Wordpress => new WordPressService($connector, $dataMapperService),
+      ZonosPlatformType::Wordpress => new WordPressService(
+        connector:         $connector,
+        dataMapperService: $dataMapperService,
+      ),
       default => throw new InvalidArgumentException('Unsupported platform type: ' . $platformType->value),
     };
   }
