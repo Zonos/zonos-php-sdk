@@ -66,7 +66,10 @@ class ZonosSdk
     $zonosConfig = new ZonosConfig($config);
     $dataMapperService = new DataMapperService($zonosConfig);
 
-    $this->logger = new DataDogLogger();
+    $this->logger = new DataDogLogger(
+      credentialToken: $credentialToken,
+    );
+    
     $this->connector = new ZonosConnector(
       credentialToken: $credentialToken,
       baseUrl:         $baseUrl,

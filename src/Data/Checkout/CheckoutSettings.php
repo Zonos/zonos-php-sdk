@@ -51,9 +51,8 @@ class CheckoutSettings
     ];
   }
 
-  public static function fromArray(array $data): self // May be abstracted
+  public static function fromArray(array $data): self
   {
-
     return new self(
       allowedCharacterSets:     $data['allowedCharacterSets'] ?? '',
       allowedDomains:           $data['allowedDomains'] ?? [],

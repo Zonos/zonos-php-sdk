@@ -7,27 +7,43 @@ use Saloon\Http\Request;
 use Saloon\Enums\Method;
 use Saloon\Traits\Body\HasJsonBody;
 
+/*
+ * DataDogLoggerRequest class for handling Zonos Logging API requests
+ */
+
 class DataDogLoggerRequest extends Request implements HasBody
 {
   use HasJsonBody;
 
-  // Define the HTTP method
   protected Method $method = Method::POST;
 
+  /**
+   * Constructor for the DataDogLoggerRequest
+   *
+   * @param string|null $response The response type
+   */
   public function __construct(
-    protected array $log_body,
+    protected array $logBody,
   ) {
   }
 
-  // Define the endpoint
+  /**
+   * Resolve the endpoint for the request
+   *
+   * @return string
+   */
   public function resolveEndpoint(): string
   {
-    return '/api/v2/logs';
+    return '/sendToZonos';
   }
 
-  // Define the data to send with the request
+  /**
+   * Default body for the request
+   *
+   * @return array
+   */
   protected function defaultBody(): array
   {
-    return $this->log_body;
+    return $this->logBody;
   }
 }
