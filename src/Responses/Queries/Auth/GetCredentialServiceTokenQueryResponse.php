@@ -7,8 +7,12 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class GetCredentialServiceTokenQueryResponse extends ZonosResponse
 {
-  public function resolve(): CredentialServiceToken
+  public function resolve(): ?CredentialServiceToken
   {
-    return CredentialServiceToken::fromArray($this->json('data.getCredentialServiceToken'));
+    $credentialServiceTokenData = $this->json('data.getCredentialServiceToken');
+    if ($credentialServiceTokenData === null) {
+      return null;
+    }
+    return CredentialServiceToken::fromArray($credentialServiceTokenData);
   }
 }

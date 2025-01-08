@@ -127,12 +127,31 @@ class DataMapperService
   private function mapProductAttributes(array $attributes, \WC_Product $product, array $cart_item): array
   {
     $productAttributes = [];
-    $variation = $cart_item['variation'] ?? null;
 
     foreach ($attributes as $attribute) {
-      $value = $variation
-        ? ($variation['attribute_pa_' . $attribute] ?? null)
-        : $product->get_attribute($attribute);
+      $parts = explode('.', $attribute);
+      $value = $cart_item;
+      $found = true;
+
+      foreach ($parts as $part) {
+        if (isset($value[$part])) {
+          $value = $value[$part];
+        } else {
+          $value = null;
+          $found = false;
+          break;
+        }
+      }
+
+      if (!$found) {
+
+        $variation = $cart_item['variation'] ?? null;
+
+        $value = $variation
+          ? ($variation['attribute_pa_' . $attribute] ?? null)
+          : $product->get_attribute($attribute);
+      }
+
 
       if ($value) {
         $productAttributes[] = [

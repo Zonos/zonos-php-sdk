@@ -11,6 +11,7 @@ use Zonos\ZonosSdk\Services\AbstractZonosService;
 use Zonos\ZonosSdk\Services\DataMapperService;
 use Zonos\ZonosSdk\Services\ZonosAuthService;
 use Zonos\ZonosSdk\Services\ZonosServiceFactory;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
  * Main entry point for the Zonos SDK
@@ -41,6 +42,11 @@ class ZonosSdk
   private readonly ZonosAuthService $authService;
 
   /**
+   * @var DataDogLogger The logger service
+   */
+  private readonly DataDogLogger $logger;
+
+  /**
    * Create a new ZonosSdk instance
    *
    * @param string $credentialToken Authentication token for API access
@@ -60,6 +66,7 @@ class ZonosSdk
     $zonosConfig = new ZonosConfig($config);
     $dataMapperService = new DataMapperService($zonosConfig);
 
+    $this->logger = new DataDogLogger();
     $this->connector = new ZonosConnector(
       credentialToken: $credentialToken,
       baseUrl:         $baseUrl,
@@ -112,5 +119,15 @@ class ZonosSdk
   public function authConnector(): AuthConnector
   {
     return $this->authConnector;
+  }
+
+  /**
+   * Get the logger service
+   *
+   * @return DataDogLogger The logger instance
+   */
+  public function logger(): DataDogLogger
+  {
+    return $this->logger;
   }
 }

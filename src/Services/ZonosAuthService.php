@@ -32,14 +32,17 @@ class ZonosAuthService
   /**
    * Get or create a public key for a given private key
    *
-   * @param int $privateKey The private key to get public key for
+   * @param int $storeId The store id
    * @return string The public key (credential ID)
-   * @throws InvalidArgumentException When credential creation fails
+   * @throws InvalidArgumentException When credential creation or retrival fails
    */
-  public function getPublicKey(int $privateKey): string
+  public function getPublicKey(int $storeId, bool $testMode = false): ?string
   {
-    $credentialToken = $this->getExistingCredential($privateKey);
+    $credentialToken = $this->getExistingCredential($storeId, $testMode);
 
+    if ($credentialToken == null) {
+      throw new InvalidArgumentException("Failed to retrieve service token");
+    }
     if ($credentialToken?->credential?->type === 'PUBLIC_TOKEN') {
       return $credentialToken->credential->id;
     }
@@ -54,12 +57,12 @@ class ZonosAuthService
    * @return CredentialServiceToken The credential service token
    * @throws InvalidArgumentException When credential retrieval fails
    */
-  private function getExistingCredential(int $storeId): CredentialServiceToken
+  private function getExistingCredential(int $storeId, bool $testMode): ?CredentialServiceToken
   {
     $input = GetCredentialServiceTokenInput::fromArray(
       [
         'storeId' => $storeId,
-        'mode' => 'LIVE'
+        'mode' => $testMode ? 'TEST' : 'LIVE'
       ]
     );
 
@@ -82,7 +85,7 @@ class ZonosAuthService
   {
     $input = CredentialCreateInput::fromArray(
       [
-        'name' => 'Public Credential',
+        'name' => 'Public Credential for PHP SDK',
         'mode' => 'LIVE',
         'type' => 'PUBLIC_TOKEN',
         'organization' => $organization,
