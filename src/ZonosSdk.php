@@ -86,7 +86,6 @@ class ZonosSdk
     );
 
     $this->authService = new ZonosAuthService(
-      config:        $zonosConfig,
       authConnector: $this->authConnector
     );
 

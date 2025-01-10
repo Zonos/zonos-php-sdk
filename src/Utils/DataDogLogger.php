@@ -36,6 +36,7 @@ class DataDogLogger
         "message" => $message,
       ]
     );
-    $connector->send($request);
+//     TODO: Enable when PluginMessages is finished
+//    $connector->send($request);
   }
 }

@@ -5,7 +5,7 @@ namespace Zonos\ZonosSdk\Data\Auth;
 class CredentialServiceToken
 {
   public function __construct(
-    public float       $storeId,
+    public int         $storeId,
     public ?Credential $credential,
   ) {
   }
@@ -21,7 +21,7 @@ class CredentialServiceToken
   public static function fromArray(array $data): self
   {
     return new self(
-      storeId:    $data['storeId'] ?? '',
+      storeId:    $data['storeId'] ?? 0,
       credential: isset($data['credential']) ? Credential::fromArray($data['credential']) : null,
     );
   }
