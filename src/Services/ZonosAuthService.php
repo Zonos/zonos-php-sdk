@@ -37,6 +37,9 @@ class ZonosAuthService
   public function getPublicKey(string $credentialId, int $storeId, bool $testMode = false): ?string
   {
     $organization = $this->getOrganization($credentialId);
+    if ($organization == null) {
+      throw new InvalidArgumentException("Failed to retrieve organization");
+    }
     $credentialToken = $this->getLatestPublicCredential($testMode, $organization, $storeId);
 
     if ($credentialToken == null) {
