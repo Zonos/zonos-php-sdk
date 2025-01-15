@@ -86,7 +86,8 @@ class ZonosAuthService
       'credential.id',
       'credential.type',
     );
-    return end($credentialServiceTokens);
+
+    return count($credentialServiceTokens) > 0 ? end($credentialServiceTokens) : null;
   }
 
   /**

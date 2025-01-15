@@ -74,7 +74,7 @@ class DataMapperService
 
       $result = match ($value) {
         'quantity' => $this->mapQuantity($result, $key, $cart_item),
-        'image_id' => $this->mapImage($result, $key, $productData[$value] ?? null),
+        'image_id' => $this->mapImage($result, $key, (int)$productData[$value] ?? null),
         'length', 'width', 'height' => $this->mapDimension($result, $value, $productData[$value] ?? null),
         'weight' => $this->mapWeight($result, $productData[$value] ?? null),
         default => $this->mapByValue($key, $value, $result, $product, $productData, $cart_item),
