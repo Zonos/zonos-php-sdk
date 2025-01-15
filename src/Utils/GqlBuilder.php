@@ -125,6 +125,9 @@ class GqlBuilder
         $line = "{$key}: ";
 
         if (is_object($value)) {
+          if ($value instanceof \UnitEnum) {
+            return "{$key}: {$value->value}";
+          }
           $value = array_filter((array)$value);
         }
 

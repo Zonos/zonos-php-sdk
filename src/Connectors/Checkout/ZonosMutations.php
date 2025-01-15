@@ -4,8 +4,10 @@ namespace Zonos\ZonosSdk\Connectors\Checkout;
 
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CheckoutSettingUpdateInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\OrderUpdateAccountOrderNumberInput;
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\WebhookCreateInput;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\CheckoutSettingsUpdateRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\OrderUpdateAccountOrderNumberRequest;
+use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhookCreateRequest;
 
 /**
  * Trait for mutations available in the Zonos SDK
@@ -32,5 +34,16 @@ trait ZonosMutations
   public function orderUpdateAccountOrderNumber(OrderUpdateAccountOrderNumberInput $input): OrderUpdateAccountOrderNumberRequest
   {
     return new OrderUpdateAccountOrderNumberRequest($this, ['input' => $input]);
+  }
+
+  /**
+   * Create a webhook
+   *
+   * @param WebhookCreateInput $input The input data for creating a webhook
+   * @return WebhookCreateRequest A pending request for webhook creation
+   */
+  public function webhookCreate(WebhookCreateInput $input): WebhookCreateRequest
+  {
+    return new WebhookCreateRequest($this, ['input' => $input]);
   }
 }

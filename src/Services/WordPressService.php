@@ -145,6 +145,49 @@ class WordPressService extends AbstractZonosService
   }
 
   /**
+   * Adds tracking numbers to an order
+   *
+   * @param string $orderId The order ID
+   * @param array $trackingNumbers The tracking numbers
+   * @return bool Whether the tracking numbers were added
+   * @throws InvalidArgumentException If the order is not found
+   */
+  public function addTrackingNumbersToOrder(string $orderId, array $trackingNumbers): bool
+  {
+    if (!function_exists('WC')) {
+      throw new RuntimeException('WooCommerce is not active');
+    }
+
+    try {
+      $wooOrder = $this->validateExistingOrder($orderId, true);
+      if (!$wooOrder) {
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$orderId}");
+      }
+
+
+      $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
+      $existingTrackingNumbers = !empty($existingTrackingString)
+        ? array_map('trim', explode(',', $existingTrackingString))
+        : [];
+
+      $newTrackingNumbers = array_unique(array_merge($existingTrackingNumbers, $trackingNumbers));
+
+      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $newTrackingNumbers));
+
+      $wooOrder->add_order_note(
+        sprintf('New tracking number(s) added: %s', implode(', ', $newTrackingNumbers)),
+        false
+      );
+
+      $wooOrder->save();
+
+      return true;
+    } catch (\Exception $e) {
+      throw new InvalidArgumentException("Failed to add tracking number to order: " . $e->getMessage());
+    }
+  }
+
+  /**
    * Validates order existence and returns the order if found
    *
    * @param string $zonosOrderId The order ID

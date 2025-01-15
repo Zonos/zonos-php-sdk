@@ -4,6 +4,7 @@ namespace Zonos\ZonosSdk\Connectors\Checkout;
 
 use Zonos\ZonosSdk\Requests\Pending\Checkout\CheckoutSettingsRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\OrderRequest;
+use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhooksRequest;
 
 /**
  * Trait for queries available in the Zonos SDK
@@ -29,5 +30,16 @@ trait ZonosQueries
   public function order(array $args): OrderRequest
   {
     return new OrderRequest($this, $args);
+  }
+
+  /**
+   * Get webhooks
+   *
+   * @param array<string, mixed> $args The arguments for the webhooks query
+   * @return WebhooksRequest A pending request for webhooks
+   */
+  public function webhooks(array $args = []): WebhooksRequest
+  {
+    return new WebhooksRequest($this, $args);
   }
 }
