@@ -14,7 +14,7 @@ class OrderRequest extends PendingZonosRequest
     'id',
   ];
 
-  public function __construct(ZonosConnector $connector, public array $args = [])
+  public function __construct(ZonosConnector $connector, public array $args = [], bool $withRetry)
   {
     parent::__construct($connector, GqlBuilder::make('query', 'order', $args));
   }
@@ -27,8 +27,18 @@ class OrderRequest extends PendingZonosRequest
   public function response(string ...$fields): OrderQueryResponse
   {
     $query = $this->query->withFields($this->normalizeFields($fields));
+    $request = new ZonosRequest(OrderQueryResponse::class, (string)$query);
+    $response = $this->connector->send($request)->throw();
 
-    $response = $this->connector->send(new ZonosRequest(OrderQueryResponse::class, (string)$query))->throw();
+    error_log('aquuiiiiii');
+    error_log(json_encode($response));
+    if (!isset($response) && $this->withRetry) {
+      $request->headers()->add('credentialToken', $this->connector->getTestCredentialToken());
+      error_log('query');
+      error_log($request->query()->__toString());
+      $response = $this->connector->send($request)->throw();
+    }
+
     assert($response instanceof OrderQueryResponse);
 
     return $response;

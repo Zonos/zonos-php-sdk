@@ -36,20 +36,50 @@ class ZonosAuthService
    */
   public function getPublicKey(string $credentialId, int $storeId, bool $testMode = false): ?string
   {
+    $tokenType = 'PUBLIC_TOKEN';
     $organization = $this->getOrganization($credentialId);
     if ($organization == null) {
       throw new InvalidArgumentException("Failed to retrieve organization");
     }
-    $credentialToken = $this->getLatestPublicCredential($testMode, $organization, $storeId);
+    $credentialToken = $this->getLatestredential($testMode, $organization, $storeId, $tokenType);
 
     if ($credentialToken == null) {
       throw new InvalidArgumentException("Failed to retrieve service token");
     }
-    if ($credentialToken->credential?->type === 'PUBLIC_TOKEN') {
+    if ($credentialToken->credential?->type === $tokenType) {
       return $credentialToken->credential->id;
     }
 
-    return $this->createPublicCredential($organization);
+    return $this->createCredential($organization, $tokenType);
+  }
+
+  /**
+   * Get or create a public key for a given private key
+   *
+   * @param string $credentialId The credential id
+   * @param int $storeId The store id
+   * @return string The private key (credential ID)
+   * @throws InvalidArgumentException When credential creation or retrival fails
+   */
+  public function getPrivateKey(string $credentialId, int $storeId, bool $testMode = false): ?string
+  {
+    $tokenType = 'PRIVATE_TOKEN';
+    $organization = $this->getOrganization($credentialId);
+    error_log('$organization');
+    error_log($organization);
+    if ($organization == null) {
+      throw new InvalidArgumentException("Failed to retrieve organization");
+    }
+    $credentialToken = $this->getLatestCredential($testMode, $organization, $storeId, $tokenType);
+
+    if ($credentialToken == null) {
+      throw new InvalidArgumentException("Failed to retrieve service token");
+    }
+    if ($credentialToken->credential?->type === $tokenType) {
+      return $credentialToken->credential->id;
+    }
+
+    return $this->createCredential($organization, $tokenType);
   }
 
   /**
@@ -70,16 +100,17 @@ class ZonosAuthService
    * @param bool $testMode Whether to get the test or live credential
    * @param string $organization The organization
    * @param int $storeId The store ID
+   * @param string $type Public or Private key
    * @return CredentialServiceToken The public credential
    */
-  private function getLatestPublicCredential(bool $testMode, string $organization, int $storeId): ?CredentialServiceToken
+  private function getLatestCredential(bool $testMode, string $organization, int $storeId, string $type): ?CredentialServiceToken
   {
     $filter = CredentialServiceTokenQueryFilter::fromArray(
       [
         'mode' => $testMode ? 'TEST' : 'LIVE',
         'organizationId' => $organization,
         'storeId' => $storeId,
-        'type' => 'PUBLIC_TOKEN',
+        'type' => $type,
       ]
     );
     $credentialServiceTokens = $this->authConnector->credentialServiceTokens($filter)->get(
@@ -87,48 +118,27 @@ class ZonosAuthService
       'credential.type',
     );
 
-    return count($credentialServiceTokens) > 0 ? end($credentialServiceTokens) : null;
+    error_log('$credentialServiceTokens');
+    error_log($credentialServiceTokens);
+    return $credentialServiceTokens && count($credentialServiceTokens) > 0 ? end($credentialServiceTokens) : null;
   }
 
   /**
-   * Get existing credential for a store
-   *
-   * @param int $storeId The store ID to get credential for
-   * @return CredentialServiceToken The credential service token
-   * @throws InvalidArgumentException When credential retrieval fails
-   */
-  private function getExistingCredential(int $storeId, bool $testMode): ?CredentialServiceToken
-  {
-    $input = GetCredentialServiceTokenInput::fromArray(
-      [
-        'storeId' => $storeId,
-        'mode' => $testMode ? 'TEST' : 'LIVE'
-      ]
-    );
-
-    return $this->authConnector->getCredentialServiceToken($input)->get(
-      'storeId',
-      'credential.organization',
-      'credential.id',
-      'credential.type',
-    );
-  }
-
-  /**
-   * Create a new public credential
+   * Create a new credential
    *
    * @param string $organization The organization to create credential for
    * @param bool $testMode Whether to create a test or live credential
+   * @param string $type Public or Private key
    * @return string The created credential ID
    * @throws InvalidArgumentException When credential creation fails
    */
-  private function createPublicCredential(string $organization, bool $testMode = false): string
+  private function createCredential(string $organization, string $type, bool $testMode = false): string
   {
     $input = CredentialCreateInput::fromArray(
       [
-        'name' => 'Public Credential for PHP SDK',
+        'name' => $tokenType.' Credential for PHP SDK',
         'mode' => $testMode ? 'TEST' : 'LIVE',
-        'type' => 'PUBLIC_TOKEN',
+        'type' => $tokenType,
         'organization' => $organization,
       ]
     );
