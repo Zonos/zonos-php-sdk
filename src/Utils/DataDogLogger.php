@@ -32,11 +32,11 @@ class DataDogLogger
 
     $request = new DataDogLoggerRequest(
       [
-        "platform" => "php-zonos-sdk",
+        "platform" => "WordpressCheckout",
         "message" => $message,
       ]
     );
-//     TODO: Enable when PluginMessages is finished
-//    $connector->send($request);
+
+    $connector->send($request);
   }
 }
