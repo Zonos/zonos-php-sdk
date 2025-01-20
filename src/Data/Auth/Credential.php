@@ -2,12 +2,14 @@
 
 namespace Zonos\ZonosSdk\Data\Auth;
 
+use Zonos\ZonosSdk\Data\Auth\Enums\CredentialType;
+
 class Credential
 {
   public function __construct(
-    public string $organization,
-    public string $id,
-    public string $type,
+    public string          $organization,
+    public string          $id,
+    public ?CredentialType $type = null,
   ) {
   }
 
@@ -16,7 +18,7 @@ class Credential
     return [
       'organization' => $this->organization,
       'id' => $this->id,
-      'type' => $this->type,
+      'type' => $this->type?->value,
     ];
   }
 
@@ -25,7 +27,7 @@ class Credential
     return new self(
       organization: $data['organization'] ?? '',
       id:           $data['id'] ?? '',
-      type:         $data['type'] ?? '',
+      type:         isset($data['type']) ? CredentialType::from($data['type']) : null,
     );
   }
 }

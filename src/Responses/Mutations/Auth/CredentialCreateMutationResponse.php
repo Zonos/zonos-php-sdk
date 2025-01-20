@@ -7,8 +7,13 @@ use Zonos\ZonosSdk\Responses\ZonosResponse;
 
 class CredentialCreateMutationResponse extends ZonosResponse
 {
-  public function resolve(): Credential
+  public function resolve(): ?Credential
   {
-    return Credential::fromArray($this->json('data.credentialCreate') ?? []);
+    $credentialData = $this->json('data.credentialCreate');
+    if ($credentialData === null) {
+      return null;
+    }
+
+    return Credential::fromArray($credentialData);
   }
 }

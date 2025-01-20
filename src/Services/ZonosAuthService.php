@@ -5,9 +5,10 @@ namespace Zonos\ZonosSdk\Services;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\Auth\AuthConnector;
 use Zonos\ZonosSdk\Data\Auth\CredentialServiceToken;
+use Zonos\ZonosSdk\Data\Auth\Enums\CredentialType;
+use Zonos\ZonosSdk\Data\Auth\Enums\Mode;
 use Zonos\ZonosSdk\Requests\Inputs\Auth\CredentialCreateInput;
 use Zonos\ZonosSdk\Requests\Inputs\Auth\CredentialServiceTokenQueryFilter;
-use Zonos\ZonosSdk\Requests\Inputs\Auth\GetCredentialServiceTokenInput;
 
 /**
  * Service for handling Zonos authentication operations
@@ -36,12 +37,12 @@ class ZonosAuthService
    */
   public function getPublicKey(string $credentialId, int $storeId, bool $testMode = false): ?string
   {
-    $tokenType = 'PUBLIC_TOKEN';
+    $tokenType = CredentialType::PUBLIC_TOKEN;
     $organization = $this->getOrganization($credentialId);
     if ($organization == null) {
       throw new InvalidArgumentException("Failed to retrieve organization");
     }
-    $credentialToken = $this->getLatestredential($testMode, $organization, $storeId, $tokenType);
+    $credentialToken = $this->getLatestCredential($testMode, $organization, $storeId, $tokenType);
 
     if ($credentialToken == null) {
       throw new InvalidArgumentException("Failed to retrieve service token");
@@ -63,10 +64,8 @@ class ZonosAuthService
    */
   public function getPrivateKey(string $credentialId, int $storeId, bool $testMode = false): ?string
   {
-    $tokenType = 'PRIVATE_TOKEN';
+    $tokenType = CredentialType::API_TOKEN;
     $organization = $this->getOrganization($credentialId);
-    error_log('$organization');
-    error_log($organization);
     if ($organization == null) {
       throw new InvalidArgumentException("Failed to retrieve organization");
     }
@@ -100,17 +99,19 @@ class ZonosAuthService
    * @param bool $testMode Whether to get the test or live credential
    * @param string $organization The organization
    * @param int $storeId The store ID
-   * @param string $type Public or Private key
+   * @param CredentialType $type Public or Private key
    * @return CredentialServiceToken The public credential
    */
-  private function getLatestCredential(bool $testMode, string $organization, int $storeId, string $type): ?CredentialServiceToken
+  private function getLatestCredential(bool $testMode, string $organization, int $storeId, CredentialType $type): ?CredentialServiceToken
   {
+    $mode = $testMode ? Mode::TEST : Mode::LIVE;
+
     $filter = CredentialServiceTokenQueryFilter::fromArray(
       [
-        'mode' => $testMode ? 'TEST' : 'LIVE',
+        'mode' => $mode->value,
         'organizationId' => $organization,
         'storeId' => $storeId,
-        'type' => $type,
+        'type' => $type->value,
       ]
     );
     $credentialServiceTokens = $this->authConnector->credentialServiceTokens($filter)->get(
@@ -118,8 +119,6 @@ class ZonosAuthService
       'credential.type',
     );
 
-    error_log('$credentialServiceTokens');
-    error_log($credentialServiceTokens);
     return $credentialServiceTokens && count($credentialServiceTokens) > 0 ? end($credentialServiceTokens) : null;
   }
 
@@ -128,17 +127,18 @@ class ZonosAuthService
    *
    * @param string $organization The organization to create credential for
    * @param bool $testMode Whether to create a test or live credential
-   * @param string $type Public or Private key
+   * @param CredentialType $type Public or Private key
    * @return string The created credential ID
    * @throws InvalidArgumentException When credential creation fails
    */
-  private function createCredential(string $organization, string $type, bool $testMode = false): string
+  private function createCredential(string $organization, CredentialType $type, bool $testMode = false): string
   {
+    $mode = $testMode ? Mode::TEST : Mode::LIVE;
     $input = CredentialCreateInput::fromArray(
       [
-        'name' => $tokenType.' Credential for PHP SDK',
-        'mode' => $testMode ? 'TEST' : 'LIVE',
-        'type' => $tokenType,
+        'name' => $type->value . ' Credential for PHP SDK',
+        'mode' => $mode,
+        'type' => $type,
         'organization' => $organization,
       ]
     );
