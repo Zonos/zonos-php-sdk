@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Connectors\Checkout;
 
 use Saloon\Http\Connector;
+use Zonos\ZonosSdk\Services\ZonosAuthService;
 
 /**
  * Main connector class for interacting with the Zonos Checkout API
@@ -15,6 +16,7 @@ class ZonosConnector extends Connector
   use ZonosQueries;
   use ZonosMutations;
 
+  private string $testCredentialToken = '';
   /**
    * Create a new Zonos connector instance
    *
@@ -22,8 +24,10 @@ class ZonosConnector extends Connector
    * @param string $baseUrl Base URL for API endpoints
    */
   public function __construct(
-    protected string $credentialToken,
-    protected string $baseUrl,
+    protected string           $credentialToken,
+    protected int              $storeId,
+    protected ZonosAuthService $authService,
+    protected string           $baseUrl,
   ) {
   }
 
@@ -47,7 +51,17 @@ class ZonosConnector extends Connector
     return [
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
-      'credentialToken' => $this->credentialToken
+      'credentialToken' => $this->credentialToken,
     ];
+  }
+
+  public function setTestCredentialToken(string $testToken): void
+  {
+    $this->testCredentialToken = $testToken;
+  }
+
+  public function getTestCredentialToken(): string
+  {
+    return $this->testCredentialToken;
   }
 }

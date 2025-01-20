@@ -2,11 +2,13 @@
 
 namespace Zonos\ZonosSdk\Requests\Inputs\Auth;
 
+use Zonos\ZonosSdk\Data\Auth\Enums\Mode;
+
 class GetCredentialServiceTokenInput
 {
   public function __construct(
-    public int    $storeId,
-    public string $mode,
+    public ?int  $storeId,
+    public ?Mode $mode,
   ) {
   }
 
@@ -14,15 +16,15 @@ class GetCredentialServiceTokenInput
   {
     return [
       'storeId' => $this->storeId,
-      'mode' => $this->mode,
+      'mode' => $this->mode?->value,
     ];
   }
 
   public static function fromArray(array $data): self
   {
     return new self(
-      storeId: $data['storeId'] ?? 0,
-      mode:    $data['mode'] ?? ''
+      storeId: $data['storeId'] ?? null,
+      mode:    isset($data['mode']) ? Mode::from($data['mode']) : null,
     );
   }
 }

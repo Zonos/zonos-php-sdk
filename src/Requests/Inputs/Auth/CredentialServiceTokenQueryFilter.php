@@ -2,33 +2,36 @@
 
 namespace Zonos\ZonosSdk\Requests\Inputs\Auth;
 
+use Zonos\ZonosSdk\Data\Auth\Enums\CredentialType;
+use Zonos\ZonosSdk\Data\Auth\Enums\Mode;
+
 class CredentialServiceTokenQueryFilter
 {
   public function __construct(
-    public string $mode,
-    public string $organizationId,
-    public int    $storeId,
-    public string $type,
+    public ?Mode           $mode = null,
+    public ?string         $organizationId = null,
+    public ?int            $storeId = null,
+    public ?CredentialType $type = null,
   ) {
   }
 
   public function toArray(): array
   {
     return [
-      'mode' => $this->mode,
+      'mode' => $this->mode?->value,
       'organizationId' => $this->organizationId,
       'storeId' => $this->storeId,
-      'type' => $this->type,
+      'type' => $this->type?->value,
     ];
   }
 
   public static function fromArray(array $data): self
   {
     return new self(
-      mode:           $data['mode'] ?? '',
-      organizationId: $data['organizationId'] ?? '',
-      storeId:        $data['storeId'] ?? 0,
-      type:           $data['type'] ?? '',
+      mode:           isset($data['mode']) ? Mode::from($data['mode']) : null,
+      organizationId: $data['organizationId'] ?? null,
+      storeId:        $data['storeId'] ?? null,
+      type:           isset($data['type']) ? CredentialType::from($data['type']) : null,
     );
   }
 }

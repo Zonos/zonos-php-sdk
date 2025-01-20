@@ -19,7 +19,7 @@ class CredentialCreateRequest extends PendingAuthRequest
     parent::__construct($connector, GqlBuilder::make('mutation', 'credentialCreate', $args));
   }
 
-  public function get(string ...$fields): Credential
+  public function get(string ...$fields): ?Credential
   {
     return $this->response(...$fields)->resolve();
   }

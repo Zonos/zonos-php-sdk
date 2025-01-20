@@ -50,6 +50,7 @@ class ZonosSdk
    * Create a new ZonosSdk instance
    *
    * @param string $credentialToken Authentication token for API access
+   * @param int $storeId Store ID for API access
    * @param string $baseUrl Base URL for main API endpoints
    * @param string $authUrl Base URL for authentication endpoints
    * @param array<string, mixed> $config Additional configuration options
@@ -58,6 +59,7 @@ class ZonosSdk
    */
   public function __construct(
     string            $credentialToken,
+    int               $storeId,
     string            $baseUrl,
     string            $authUrl,
     array             $config = [],
@@ -75,11 +77,6 @@ class ZonosSdk
       credentialToken: $credentialToken,
     );
 
-    $this->connector = new ZonosConnector(
-      credentialToken: $credentialToken,
-      baseUrl:         $baseUrl,
-    );
-
     $this->authConnector = new AuthConnector(
       credentialToken: $credentialToken,
       baseUrl:         $authUrl,
@@ -87,6 +84,13 @@ class ZonosSdk
 
     $this->authService = new ZonosAuthService(
       authConnector: $this->authConnector
+    );
+
+    $this->connector = new ZonosConnector(
+      credentialToken: $credentialToken,
+      storeId:         $storeId,
+      authService:     $this->authService(),
+      baseUrl:         $baseUrl,
     );
 
     $this->service = ZonosServiceFactory::createService(

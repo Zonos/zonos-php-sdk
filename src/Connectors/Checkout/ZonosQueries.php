@@ -27,9 +27,9 @@ trait ZonosQueries
    * @param array<string, mixed> $args The arguments for the order query
    * @return OrderRequest A pending request for order information
    */
-  public function order(array $args): OrderRequest
+  public function order(array $args, bool $withRetry): OrderRequest
   {
-    return new OrderRequest($this, $args);
+    return new OrderRequest($this, $args, $withRetry);
   }
 
   /**
