@@ -32,7 +32,7 @@ class OrderRequest extends PendingZonosRequest
     $request = new ZonosRequest(OrderQueryResponse::class, (string)$query);
     $response = $this->connector->send($request)->throw();
 
-    if (!isset($response) && $this->withRetry) {
+    if ($response->json('data.order') === null && $this->withRetry) {
       $request->headers()->add('credentialToken', $this->connector->getTestCredentialToken());
       $response = $this->connector->send($request)->throw();
     }
