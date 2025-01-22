@@ -292,8 +292,8 @@ class WordPressService extends AbstractZonosService
         $product,
         $item->quantity,
         [
-          'subtotal' => $item->amount ?? $product->get_price(),
-          'total' => $item->amount ?? $product->get_price(),
+          'subtotal' => $item->quantity * ($item->amount ?? $product->get_price()),
+          'total' => $item->quantity * ($item->amount ?? $product->get_price()),
         ]
       );
 
