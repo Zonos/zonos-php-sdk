@@ -77,13 +77,13 @@ class WordPressService extends AbstractZonosService
       throw new RuntimeException('WooCommerce is not active');
     }
 
-    $this->validateExistingOrder($orderData->id, false);
+    $this->validateExistingOrder($orderData->zonosOrderId, false);
 
     /** @var \WC_Order|null $wooOrder */
     $wooOrder = null;
 
     try {
-      $wooOrder = $this->createBaseOrder($orderData->id);
+      $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
       $this->addOrderItems($wooOrder, $orderData->items);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
       $this->processOrderTotals($wooOrder, $orderData);
@@ -116,9 +116,9 @@ class WordPressService extends AbstractZonosService
 
     try {
       /** @var \WC_Order|null $wooOrder */
-      $wooOrder = $this->validateExistingOrder($orderData->id, true);
+      $wooOrder = $this->validateExistingOrder($orderData->zonosOrderId, true);
       if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$orderData->id}");
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos order number {$orderData->zonosOrderId}");
       }
 
       $updates = [];
@@ -148,21 +148,21 @@ class WordPressService extends AbstractZonosService
   /**
    * Adds tracking number to an order
    *
-   * @param string $orderId The order ID
+   * @param string $zonosOrderId The order ID
    * @param string $trackingNumber The tracking number
    * @return bool Whether the tracking number was added
    * @throws InvalidArgumentException If the order is not found
    */
-  public function addTrackingNumberToOrder(string $orderId, string $trackingNumber): bool
+  public function addTrackingNumberToOrder(string $zonosOrderId, string $trackingNumber): bool
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
     }
 
     try {
-      $wooOrder = $this->validateExistingOrder($orderId, true);
+      $wooOrder = $this->validateExistingOrder($zonosOrderId, true);
       if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$orderId}");
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$zonosOrderId}");
       }
 
       $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
@@ -187,17 +187,23 @@ class WordPressService extends AbstractZonosService
     }
   }
 
-
-  public function updateOrderStatus(string $orderId, string $status): bool
+  /**
+   * Updates the order status
+   *
+   * @param string $zonosOrderId The order ID
+   * @param string $status The status
+   * @return bool Whether the status was updated
+   */
+  public function updateOrderStatus(string $zonosOrderId, string $status): bool
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
     }
 
     try {
-      $wooOrder = $this->validateExistingOrder($orderId, true);
+      $wooOrder = $this->validateExistingOrder($zonosOrderId, true);
       if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$orderId}");
+        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$zonosOrderId}");
       }
 
       $orderStatus = OrderStatus::from($status);
@@ -228,7 +234,7 @@ class WordPressService extends AbstractZonosService
   {
     $existing_orders = wc_get_orders(
       [
-        'meta_key' => 'zonos_order_id',
+        'meta_key' => 'Zonos order number',
         'meta_value' => $zonosOrderId,
         'limit' => 1,
       ]
@@ -250,7 +256,7 @@ class WordPressService extends AbstractZonosService
   /**
    * Creates the WooCommerce order
    *
-   * @param string $zonosOrderId The order ID
+   * @param string $zonosOrderId The Zonos order number
    * @return \WC_Order The order
    * @throws InvalidArgumentException If order failed to be created
    */
@@ -266,7 +272,7 @@ class WordPressService extends AbstractZonosService
       throw new InvalidArgumentException('Failed to create WooCommerce order');
     }
 
-    $wooOrder->update_meta_data('zonos_order_id', $zonosOrderId);
+    $wooOrder->update_meta_data('Zonos order number', $zonosOrderId);
     $wooOrder->update_meta_data('order_attribution_origin', 'Zonos Checkout');
 
     return $wooOrder;

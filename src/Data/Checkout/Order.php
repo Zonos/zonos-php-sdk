@@ -22,6 +22,7 @@ class Order
     public OrderStatus      $status,
     /** @var Shipment[] $shipments */
     public array            $shipments,
+    public ?string          $zonosOrderId,
   ) {
   }
 
@@ -39,6 +40,7 @@ class Order
       'shipmentRatings' => array_map(fn(ShipmentRating $shipmentRating) => $shipmentRating->toArray(), $this->shipmentRatings),
       'status' => $this->status->value,
       'shipments' => array_map(fn(Shipment $shipment) => $shipment->toArray(), $this->shipments),
+      'zonosOrderId' => $this->zonosOrderId,
     ];
   }
 
@@ -67,6 +69,7 @@ class Order
                             fn(array $shipment) => Shipment::fromArray($shipment),
                             $data['shipments'] ?? []
                           ) ?? [],
+      zonosOrderId:       $data['zonosOrderId'] ?? null,
     );
   }
 }
