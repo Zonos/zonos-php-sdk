@@ -281,8 +281,18 @@ class WordPressService extends AbstractZonosService
   private function addOrderItems(\WC_Order $wooOrder, array $items): void
   {
     foreach ($items as $item) {
-      $productId = wc_get_product_id_by_sku($item->sku);
-      $product = wc_get_product($productId ?? $item->productId);
+      $product = null;
+
+      if (!empty($item->sku)) {
+        $productId = wc_get_product_id_by_sku($item->sku);
+        if ($productId) {
+          $product = wc_get_product($productId);
+        }
+      }
+
+      if (!$product && !empty($item->productId)) {
+        $product = wc_get_product((int)$item->productId);
+      }
 
       if (!$product) {
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
@@ -400,9 +410,11 @@ class WordPressService extends AbstractZonosService
    */
   private function getExchangeRate(Order $orderData): ?ExchangeRate
   {
-    if ($orderData->root === null ||
-    empty($orderData->root->exchangeRates) ||
-    $orderData->currencyCode === reset($orderData->items)->currencyCode ?? '') {
+    if (
+      $orderData->root === null ||
+      empty($orderData->root->exchangeRates) ||
+      $orderData->currencyCode === reset($orderData->items)->currencyCode ?? ''
+    ) {
       return null;
     }
 
