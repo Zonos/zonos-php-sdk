@@ -56,6 +56,7 @@ class WordPressService extends AbstractZonosService
       $product = wc_get_product($cartItem['product_id']);
       $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
 
+      array_push($mappedProduct['attributes'], ['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]);
       array_push($items, $mappedProduct);
     }
 
@@ -309,10 +310,12 @@ class WordPressService extends AbstractZonosService
 
       $orderItem = $wooOrder->get_item($itemId);
       foreach ($item->attributes as $attribute) {
-        $taxonomy = wc_attribute_taxonomy_name($attribute->key);
-        $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
-        $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-        $orderItem->add_meta_data($attributeName, $attributeValue);
+        if ($attribute->key !== 'raw_cart_item') {
+          $taxonomy = wc_attribute_taxonomy_name($attribute->key);
+          $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
+          $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
+          $orderItem->add_meta_data($attributeName, $attributeValue);
+        }
       }
       $orderItem->save();
     }
