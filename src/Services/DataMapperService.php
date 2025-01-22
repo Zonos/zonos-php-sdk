@@ -57,7 +57,7 @@ class DataMapperService
    */
   public function mapProductData(array $cart_item, \WC_Product $product): array
   {
-    $productData = array_filter($product->get_data(), fn($value) => $value !== '');
+    $productData = $product->get_data();
     $mapping = $this->config->getMapping('product');
     if (!$mapping) {
       throw new InvalidArgumentException('Product mapping configuration is missing');
@@ -75,8 +75,8 @@ class DataMapperService
       $result = match ($value) {
         'quantity' => $this->mapQuantity($result, $key, $cart_item),
         'image_id' => $this->mapImage($result, $key, (int)$productData[$value] ?? null),
-        'length', 'width', 'height' => $this->mapDimension($result, $value, $productData[$value] ?? null),
-        'weight' => $this->mapWeight($result, $productData[$value] ?? null),
+        'length', 'width', 'height' => $this->mapDimension($result, $value, (float)$productData[$value] ?? null),
+        'weight' => $this->mapWeight($result, (float)$productData[$value] ?? null),
         default => $this->mapByValue($key, $value, $result, $product, $productData, $cart_item),
       };
     }
