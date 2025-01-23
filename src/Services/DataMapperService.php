@@ -65,6 +65,7 @@ class DataMapperService
 
     $result = [
       'measurements' => [],
+      'attributes' => [],
     ];
 
     foreach ($mapping as $key => $value) {
@@ -148,7 +149,7 @@ class DataMapperService
         $variation = $cart_item['variation'] ?? null;
 
         $value = $variation
-          ? ($variation['attribute_pa_' . $attribute] ?? null)
+          ? ($variation['attribute_pa_' . $attribute] ?? ($variation['attribute_' . $attribute] ?? null))
           : $product->get_attribute($attribute);
       }
 
