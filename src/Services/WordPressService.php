@@ -56,6 +56,9 @@ class WordPressService extends AbstractZonosService
       $product = wc_get_product($cartItem['product_id']);
       $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
 
+      if ($mappedProduct['attributes'] === null) {
+        $mappedProduct['attributes'] = [];
+      }
       array_push($mappedProduct['attributes'], ['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]);
       array_push($items, $mappedProduct);
     }
@@ -142,83 +145,6 @@ class WordPressService extends AbstractZonosService
       return $wooOrder;
     } catch (\Exception $e) {
       throw new InvalidArgumentException("Failed to update order: " . $e->getMessage());
-    }
-  }
-
-  /**
-   * Adds tracking number to an order
-   *
-   * @param string $zonosOrderId The order ID
-   * @param string $trackingNumber The tracking number
-   * @return bool Whether the tracking number was added
-   * @throws InvalidArgumentException If the order is not found
-   */
-  public function addTrackingNumberToOrder(string $zonosOrderId, string $trackingNumber): bool
-  {
-    if (!function_exists('WC')) {
-      throw new RuntimeException('WooCommerce is not active');
-    }
-
-    try {
-      $wooOrder = $this->validateExistingOrder($zonosOrderId, true);
-      if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$zonosOrderId}");
-      }
-
-      $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
-      $existingTrackingNumbers = !empty($existingTrackingString)
-        ? array_map('trim', explode(',', $existingTrackingString))
-        : [];
-
-      $newTrackingNumbers = array_unique(array_merge($existingTrackingNumbers, [$trackingNumber]));
-
-      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $newTrackingNumbers));
-
-      $wooOrder->add_order_note(
-        sprintf('New tracking number(s) added: %s', implode(', ', $newTrackingNumbers)),
-        false
-      );
-
-      $wooOrder->save();
-
-      return true;
-    } catch (\Exception $e) {
-      throw new InvalidArgumentException("Failed to add tracking number to order: " . $e->getMessage());
-    }
-  }
-
-  /**
-   * Updates the order status
-   *
-   * @param string $zonosOrderId The order ID
-   * @param string $status The status
-   * @return bool Whether the status was updated
-   */
-  public function updateOrderStatus(string $zonosOrderId, string $status): bool
-  {
-    if (!function_exists('WC')) {
-      throw new RuntimeException('WooCommerce is not active');
-    }
-
-    try {
-      $wooOrder = $this->validateExistingOrder($zonosOrderId, true);
-      if (!$wooOrder) {
-        throw new InvalidArgumentException("Failed to retrieve WooCommerce order with Zonos ID {$zonosOrderId}");
-      }
-
-      $orderStatus = OrderStatus::from($status);
-      $this->setOrderStatus($wooOrder, $orderStatus);
-
-      $wooOrder->add_order_note(
-        sprintf('Zonos order status updated: %s', $orderStatus->value),
-        false
-      );
-
-      $wooOrder->save();
-
-      return true;
-    } catch (\Exception $e) {
-      throw new InvalidArgumentException("Failed to update order status: " . $e->getMessage());
     }
   }
 

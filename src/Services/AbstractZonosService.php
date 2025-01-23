@@ -43,24 +43,6 @@ abstract class AbstractZonosService
   abstract public function updateOrder(Order $orderData): mixed;
 
   /**
-   * Add tracking numbers to an order
-   *
-   * @param string $orderId The order ID
-   * @param string $trackingNumber The tracking number
-   * @return bool Whether the tracking number was added
-   */
-  abstract public function addTrackingNumberToOrder(string $orderId, string $trackingNumber): bool;
-
-  /**
-   * Update the status of an order
-   *
-   * @param string $orderId The order ID
-   * @param string $status The new status
-   * @return bool Whether the status was updated
-   */
-  abstract public function updateOrderStatus(string $orderId, string $status): bool;
-
-  /**
    * Export an order from the e-commerce platform in Zonos format
    *
    * @return array<string, mixed> The order data in Zonos format
