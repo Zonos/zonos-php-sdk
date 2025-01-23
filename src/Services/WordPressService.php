@@ -246,7 +246,7 @@ class WordPressService extends AbstractZonosService
           $taxonomy = wc_attribute_taxonomy_name($attribute->key);
           $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
           $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-          $orderItem->add_meta_data($attributeName, $attributeValue);
+          $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
         }
       }
       $orderItem->save();
