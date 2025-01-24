@@ -45,7 +45,7 @@ abstract class AbstractZonosService
   /**
    * Export an order from the e-commerce platform in Zonos format
    *
-   * @return array<string, mixed> The order data in Zonos format
+   * @return string|null The order data in Zonos format
    */
-  abstract public function exportOrder(): array;
+  abstract public function exportOrder(): ?string;
 }

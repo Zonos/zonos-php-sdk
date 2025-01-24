@@ -11,6 +11,7 @@ use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
 use Zonos\ZonosSdk\Data\Checkout\Item;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 use Zonos\ZonosSdk\Data\Checkout\Party;
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
 
 /**
  * WordPress-specific implementation of Zonos service
@@ -38,12 +39,12 @@ class WordPressService extends AbstractZonosService
 
   /**
    * Export a WooCommerce order from the WordPress database
-   * in the Zonos Format
+   * and create a cart in Zonos
    *
-   * @return array<string, mixed> The order data in Zonos format
+   * @return string|null The cart ID
    * @throws RuntimeException When WooCommerce is not active
    */
-  public function exportOrder(): array
+  public function exportOrder(): ?string
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
@@ -63,7 +64,20 @@ class WordPressService extends AbstractZonosService
       array_push($items, $mappedProduct);
     }
 
-    return $items;
+    $cartCreateInput = CartCreateInput::fromArray(
+      [
+        'items' => $items,
+      ]
+    );
+
+
+    $cart = $this->connector->cartCreate($cartCreateInput)->get('id');
+
+    if ($cart === null) {
+      throw new InvalidArgumentException('Failed to create cart');
+    }
+
+    return $cart->id;
   }
 
   /**

@@ -2,9 +2,11 @@
 
 namespace Zonos\ZonosSdk\Connectors\Checkout;
 
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CheckoutSettingUpdateInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\OrderUpdateAccountOrderNumberInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\WebhookCreateInput;
+use Zonos\ZonosSdk\Requests\Pending\Checkout\CartCreateRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\CheckoutSettingsUpdateRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\OrderUpdateAccountOrderNumberRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhookCreateRequest;
@@ -14,6 +16,17 @@ use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhookCreateRequest;
  */
 trait ZonosMutations
 {
+  /**
+   * Create a cart
+   *
+   * @param CartCreateInput $input The input data for creating a cart
+   * @return CartCreateRequest A pending request for cart creation
+   */
+  public function cartCreate(CartCreateInput $input): CartCreateRequest
+  {
+    return new CartCreateRequest($this, ['input' => $input]);
+  }
+
   /**
    * Update checkout settings
    *
