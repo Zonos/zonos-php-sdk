@@ -55,6 +55,7 @@ class ZonosSdk
    * @param string $authUrl Base URL for authentication endpoints
    * @param array<string, mixed> $config Additional configuration options
    * @param ZonosPlatformType $platformType The type of platform being integrated
+   * @param string $platformVersion The version of platform being integrated
    * @throws InvalidArgumentException When invalid configuration is provided
    */
   public function __construct(
@@ -63,11 +64,12 @@ class ZonosSdk
     string            $baseUrl,
     string            $authUrl,
     array             $config = [],
-    ZonosPlatformType $platformType = ZonosPlatformType::Default
+    ZonosPlatformType $platformType = ZonosPlatformType::Default,
+    string            $platformVersion = ''
   ) {
     $clientHeaders = [
-      'x-client-name' => 'zonos-for-woocommerce - '.$platformType->value.' (zonos-sdk)',
-      'x-client-version' => '0.0.1 (sdk:1.0.0)' //TODO: Update version of the packages
+      'x-client-name' => $platformType->value.' - (zonos-sdk)',
+      'x-client-version' => $platformVersion.' (sdk:1.0.0)'
     ];
 
     $zonosConfig = new ZonosConfig(
