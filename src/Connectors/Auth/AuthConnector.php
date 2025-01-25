@@ -20,10 +20,12 @@ class AuthConnector extends Connector
    *
    * @param string $credentialToken Authentication token for API access
    * @param string $baseUrl Base URL for API endpoints
+   * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string $credentialToken,
     protected string $baseUrl,
+    protected array  $clientHeaders,
   ) {
   }
 
@@ -44,11 +46,11 @@ class AuthConnector extends Connector
    */
   protected function defaultHeaders(): array
   {
-    return [
+    return array_merge([
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
       'credentialToken' => $this->credentialToken,
       'senderCredential' => 'credential_live_c2b26e14-3099-463e-ac11-6881049425a2'
-    ];
+    ], $this->clientHeaders);
   }
 }

@@ -21,13 +21,17 @@ class ZonosConnector extends Connector
    * Create a new Zonos connector instance
    *
    * @param string $credentialToken Authentication token for API access
+   * @param int $storeId The store id
+   * @param ZonosAuthService $authService Auth service instance
    * @param string $baseUrl Base URL for API endpoints
+   * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string           $credentialToken,
     protected int              $storeId,
     protected ZonosAuthService $authService,
     protected string           $baseUrl,
+    protected array            $clientHeaders,
   ) {
   }
 
@@ -48,11 +52,11 @@ class ZonosConnector extends Connector
    */
   protected function defaultHeaders(): array
   {
-    return [
+    return array_merge([
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
       'credentialToken' => $this->credentialToken,
-    ];
+    ], $this->clientHeaders);
   }
 
   public function setTestCredentialToken(string $testToken): void

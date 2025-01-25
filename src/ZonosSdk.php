@@ -65,6 +65,11 @@ class ZonosSdk
     array             $config = [],
     ZonosPlatformType $platformType = ZonosPlatformType::Default
   ) {
+    $clientHeaders = [
+      'x-client-name' => 'zonos-for-woocommerce - '.$platformType->value.' (zonos-sdk)',
+      'x-client-version' => '0.0.1 (sdk:1.0.0)' //TODO: Update version of the packages
+    ];
+
     $zonosConfig = new ZonosConfig(
       config: $config
     );
@@ -75,11 +80,13 @@ class ZonosSdk
 
     $this->logger = new DataDogLogger(
       credentialToken: $credentialToken,
+      clientHeaders:   $clientHeaders,
     );
 
     $this->authConnector = new AuthConnector(
       credentialToken: $credentialToken,
       baseUrl:         $authUrl,
+      clientHeaders:   $clientHeaders,
     );
 
     $this->authService = new ZonosAuthService(
@@ -91,6 +98,7 @@ class ZonosSdk
       storeId:         $storeId,
       authService:     $this->authService(),
       baseUrl:         $baseUrl,
+      clientHeaders:   $clientHeaders,
     );
 
     $this->service = ZonosServiceFactory::createService(
