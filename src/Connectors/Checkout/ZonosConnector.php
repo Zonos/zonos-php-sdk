@@ -68,4 +68,9 @@ class ZonosConnector extends Connector
   {
     return $this->testCredentialToken;
   }
+
+  public function getSource(): string
+  {
+    return $this->clientHeaders['x-client-name'] ?? '';
+  }
 }

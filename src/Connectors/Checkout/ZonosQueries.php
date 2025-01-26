@@ -4,6 +4,7 @@ namespace Zonos\ZonosSdk\Connectors\Checkout;
 
 use Zonos\ZonosSdk\Requests\Pending\Checkout\CheckoutSettingsRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\OrderRequest;
+use Zonos\ZonosSdk\Requests\Pending\Checkout\PluginCredentialRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhooksRequest;
 
 /**
@@ -41,5 +42,16 @@ trait ZonosQueries
   public function webhooks(array $args = []): WebhooksRequest
   {
     return new WebhooksRequest($this, $args);
+  }
+
+  /**
+   * Get plugin credential
+   *
+   * @param array<string, string> $args The arguments for the plugin credential query
+   * @return PluginCredentialRequest A pending request for plugin credential
+   */
+  public function pluginCredential(array $args): PluginCredentialRequest
+  {
+    return new PluginCredentialRequest($this, $args);
   }
 }

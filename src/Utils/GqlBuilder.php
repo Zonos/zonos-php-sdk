@@ -95,6 +95,8 @@ class GqlBuilder
     $args = str_replace('"LIVE"', 'LIVE', $args); // TODO: Revisar esto con Hiram
     $args = str_replace('"TEST"', 'TEST', $args); // TODO: Revisar esto con Julio
     $args = str_replace('"PUBLIC_TOKEN"', 'PUBLIC_TOKEN', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PUBLIC"', 'PUBLIC', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PRIVATE"', 'PRIVATE', $args); // TODO: Revisar esto con Hiram
 
     return <<<gql
 		{$this->type}{$alias} {

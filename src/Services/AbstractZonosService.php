@@ -48,4 +48,6 @@ abstract class AbstractZonosService
    * @return array<string, mixed> The order data in Zonos format
    */
   abstract public function exportOrder(): array;
+
+  abstract public function getCredentialToken(string $type, string $mode): string;
 }
