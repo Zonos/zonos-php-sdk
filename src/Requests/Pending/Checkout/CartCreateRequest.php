@@ -27,9 +27,7 @@ class CartCreateRequest extends PendingZonosRequest
   public function response(string ...$fields): CartCreateMutationResponse
   {
     $query = $this->query->withFields($this->normalizeFields($fields));
-    error_log((string)$query);
     $response = $this->connector->send(new ZonosRequest(CartCreateMutationResponse::class, (string)$query))->throw();
-    error_log((string)$response);
     assert($response instanceof CartCreateMutationResponse);
 
     return $response;

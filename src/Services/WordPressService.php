@@ -11,7 +11,10 @@ use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
 use Zonos\ZonosSdk\Data\Checkout\Item;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 use Zonos\ZonosSdk\Data\Checkout\Party;
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartAdjustmentInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
+use Zonos\ZonosSdk\Data\Checkout\Enums\CartAdjustmentType;
+use Zonos\ZonosSdk\Data\Checkout\Enums\CurrencyCode;
 
 /**
  * WordPress-specific implementation of Zonos service
@@ -49,9 +52,11 @@ class WordPressService extends AbstractZonosService
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
     }
+    $cart = WC()->cart;
 
     $items = [];
-    $cart = WC()->cart;
+    $adjustments = [];
+    $appliedCoupons = $cart->get_applied_coupons();
 
     foreach ($cart->get_cart() as $cartItem) {
       $product = wc_get_product($cartItem['product_id']);
@@ -60,16 +65,43 @@ class WordPressService extends AbstractZonosService
       if ($mappedProduct['attributes'] === null) {
         $mappedProduct['attributes'] = [];
       }
-      array_push($mappedProduct['attributes'], ['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]);
-      array_push($items, $mappedProduct);
+
+      $mappedProduct['attributes'][] = [
+        'key' => 'raw_cart_item',
+        'value' => json_encode($cartItem),
+      ];
+
+      $items[] = $mappedProduct;
+
+      foreach ($appliedCoupons as $couponCode) {
+        $coupon = new \WC_Coupon($couponCode);
+        $discountApplied = $this->getDiscountApplied($coupon, $cartItem);
+        if ($discountApplied !== null) {
+          $type = CartAdjustmentType::ITEM;
+          if ($coupon->get_discount_type() === 'fixed_cart') {
+            $type = CartAdjustmentType::CART_TOTAL;
+          }
+
+          $adjustment = new CartAdjustmentInput(
+            amount:       $discountApplied,
+            currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
+            description:  "Discount for coupon $couponCode",
+            productId:    $mappedProduct['productId'] ?? null,
+            sku:          $mappedProduct['sku'] ?? null,
+            type:         $type,
+          );
+
+          $adjustments[] = $adjustment->toArray();
+        }
+      }
     }
 
     $cartCreateInput = CartCreateInput::fromArray(
       [
+        'adjustments' => $adjustments,
         'items' => $items,
       ]
     );
-
 
     $cart = $this->connector->cartCreate($cartCreateInput)->get('id');
 
@@ -78,6 +110,33 @@ class WordPressService extends AbstractZonosService
     }
 
     return $cart->id;
+  }
+
+  /**
+   * Get the discount applied to a cart item
+   *
+   * @param \WC_Coupon $coupon The coupon
+   * @param array $cartItem The cart item
+   * @return float|null The discount amount or null
+   */
+  private function getDiscountApplied(\WC_Coupon $coupon, array $cartItem): ?float
+  {
+    $isValidForProduct = $coupon->is_valid_for_product($cartItem['data']);
+    if ($isValidForProduct || !$isValidForProduct && $coupon->get_discount_type() === 'fixed_cart') {
+      switch ($coupon->get_discount_type()) {
+        case 'percent':
+          return (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
+        case 'fixed_product':
+          return (float)($coupon->get_amount() * $cartItem['quantity']);
+        case 'fixed_cart':
+          $cartSubtotal = WC()->cart->subtotal;
+          $proportion = $cartItem['line_subtotal'] / $cartSubtotal;
+          return (float)($coupon->get_amount() * $proportion);
+        default:
+          return null;
+      }
+    }
+    return null;
   }
 
   /**
