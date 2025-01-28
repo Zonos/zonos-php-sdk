@@ -118,13 +118,13 @@ class WordPressService extends AbstractZonosService
     if ($isValidForProduct || !$isValidForProduct && $coupon->get_discount_type() === 'fixed_cart') {
       switch ($coupon->get_discount_type()) {
         case 'percent':
-          return (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
+          return -1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
         case 'fixed_product':
-          return (float)($coupon->get_amount() * $cartItem['quantity']);
+          return -1 * (float)($coupon->get_amount() * $cartItem['quantity']);
         case 'fixed_cart':
           $cartSubtotal = WC()->cart->subtotal;
           $proportion = $cartItem['line_subtotal'] / $cartSubtotal;
-          return (float)($coupon->get_amount() * $proportion);
+          return -1 * (float)($coupon->get_amount() * $proportion);
         default:
           return null;
       }
@@ -156,8 +156,6 @@ class WordPressService extends AbstractZonosService
       $this->addOrderItems($wooOrder, $orderData->items);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
       $this->processOrderTotals($wooOrder, $orderData);
-
-      $wooOrder->calculate_totals();
       $wooOrder->save();
 
       return $wooOrder;
@@ -392,13 +390,31 @@ class WordPressService extends AbstractZonosService
       return $amount;
     };
 
-    $wooOrder->set_discount_total($convertAmount($orderData->amountSubtotals->discounts));
+    $discountAmount = $convertAmount($orderData->amountSubtotals->discounts);
+    if ($discountAmount < 0) {
+      $coupon = new \WC_Order_Item_Coupon();
+      $coupon->set_code('ZONOS-DISCOUNT');
+      $coupon->set_discount(abs($discountAmount));
+      $coupon->set_discount_tax(0);
+      $wooOrder->add_item($coupon);
+    }
+
     $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
 
     $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
+
+    $wooOrder->calculate_totals(false);
+
+    if ($discountAmount < 0) {
+      $wooOrder->set_discount_total(abs($discountAmount));
+      $wooOrder->set_discount_tax(0);
+
+      $newTotal = $wooOrder->get_total() + $discountAmount;
+      $wooOrder->set_total($newTotal);
+    }
   }
 
   /**
