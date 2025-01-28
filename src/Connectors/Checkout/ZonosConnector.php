@@ -3,7 +3,6 @@
 namespace Zonos\ZonosSdk\Connectors\Checkout;
 
 use Saloon\Http\Connector;
-use Zonos\ZonosSdk\Services\ZonosAuthService;
 
 /**
  * Main connector class for interacting with the Zonos Checkout API
@@ -22,14 +21,12 @@ class ZonosConnector extends Connector
    *
    * @param string $credentialToken Authentication token for API access
    * @param int $storeId The store id
-   * @param ZonosAuthService $authService Auth service instance
    * @param string $baseUrl Base URL for API endpoints
    * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string           $credentialToken,
     protected int              $storeId,
-    protected ZonosAuthService $authService,
     protected string           $baseUrl,
     protected array            $clientHeaders,
   ) {

@@ -4,12 +4,10 @@ namespace Zonos\ZonosSdk;
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
-use Zonos\ZonosSdk\Connectors\Auth\AuthConnector;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Enums\ZonosPlatformType;
 use Zonos\ZonosSdk\Services\AbstractZonosService;
 use Zonos\ZonosSdk\Services\DataMapperService;
-use Zonos\ZonosSdk\Services\ZonosAuthService;
 use Zonos\ZonosSdk\Services\ZonosServiceFactory;
 use Zonos\ZonosSdk\Utils\DataDogLogger;
 
@@ -27,19 +25,9 @@ class ZonosSdk
   private readonly ZonosConnector $connector;
 
   /**
-   * @var AuthConnector The authentication API connector
-   */
-  private readonly AuthConnector $authConnector;
-
-  /**
    * @var AbstractZonosService The platform-specific service implementation
    */
   private readonly AbstractZonosService $service;
-
-  /**
-   * @var ZonosAuthService The authentication service
-   */
-  private readonly ZonosAuthService $authService;
 
   /**
    * @var DataDogLogger The logger service
@@ -52,7 +40,6 @@ class ZonosSdk
    * @param string $credentialToken Authentication token for API access
    * @param int $storeId Store ID for API access
    * @param string $baseUrl Base URL for main API endpoints
-   * @param string $authUrl Base URL for authentication endpoints
    * @param array<string, mixed> $config Additional configuration options
    * @param ZonosPlatformType $platformType The type of platform being integrated
    * @param string $platformVersion The version of platform being integrated
@@ -62,7 +49,6 @@ class ZonosSdk
     string            $credentialToken,
     int               $storeId,
     string            $baseUrl,
-    string            $authUrl,
     array             $config = [],
     ZonosPlatformType $platformType = ZonosPlatformType::Default,
     string            $platformVersion = ''
@@ -85,20 +71,9 @@ class ZonosSdk
       clientHeaders:   $clientHeaders,
     );
 
-    $this->authConnector = new AuthConnector(
-      credentialToken: $credentialToken,
-      baseUrl:         $authUrl,
-      clientHeaders:   $clientHeaders,
-    );
-
-    $this->authService = new ZonosAuthService(
-      authConnector: $this->authConnector
-    );
-
     $this->connector = new ZonosConnector(
       credentialToken: $credentialToken,
       storeId:         $storeId,
-      authService:     $this->authService(),
       baseUrl:         $baseUrl,
       clientHeaders:   $clientHeaders,
     );
@@ -121,16 +96,6 @@ class ZonosSdk
   }
 
   /**
-   * Get the authentication service
-   *
-   * @return ZonosAuthService The auth service instance
-   */
-  public function authService(): ZonosAuthService
-  {
-    return $this->authService;
-  }
-
-  /**
    * Get the main API connector
    *
    * @return ZonosConnector The connector instance
@@ -138,16 +103,6 @@ class ZonosSdk
   public function connector(): ZonosConnector
   {
     return $this->connector;
-  }
-
-  /**
-   * Get the authentication API connector
-   *
-   * @return AuthConnector The auth connector instance
-   */
-  public function authConnector(): AuthConnector
-  {
-    return $this->authConnector;
   }
 
   /**
