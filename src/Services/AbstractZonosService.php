@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Services;
 
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
+use Zonos\ZonosSdk\Data\Checkout\Cart;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 
 /**
@@ -29,9 +30,10 @@ abstract class AbstractZonosService
    * Store an order in the e-commerce platform
    *
    * @param Order $orderData The Zonos order data to store
+   * @param Cart $cartData The Zonos cart data to store
    * @return mixed The created order in the platform's format
    */
-  abstract public function storeOrder(Order $orderData): mixed;
+  abstract public function storeOrder(Order $orderData, Cart $cartData): mixed;
 
 
   /**

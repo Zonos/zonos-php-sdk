@@ -10,6 +10,7 @@ class Order
   public function __construct(
     public string           $accountOrderNumber,
     public ?AmountSubtotals $amountSubtotals,
+    public ?CheckoutSession $checkoutSession,
     public string           $currencyCode,
     public string           $id,
     /** @var Item[] $items */
@@ -32,6 +33,7 @@ class Order
     return [
       'accountOrderNumber' => $this->accountOrderNumber,
       'amountSubtotals' => $this->amountSubtotals?->toArray(),
+      'checkoutSession' => $this->checkoutSession?->toArray(),
       'currencyCode' => $this->currencyCode,
       'id' => $this->id,
       'items' => array_map(fn(Item $item) => $item->toArray(), $this->items),
@@ -49,6 +51,7 @@ class Order
     return new self(
       accountOrderNumber: $data['accountOrderNumber'] ?? '',
       amountSubtotals:    isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
+      checkoutSession:    isset($data['checkoutSession']) ? CheckoutSession::fromArray($data['checkoutSession']) : null,
       currencyCode:       $data['currencyCode'] ?? '',
       id:                 $data['id'] ?? '',
       items:              array_map(
