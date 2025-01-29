@@ -17,10 +17,12 @@ class DataDogLoggerConnector extends Connector
    *
    * @param string $credentialToken Authentication token for API access
    * @param string $baseUrl Base URL for API endpoints
+   * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string $credentialToken,
     protected string $baseUrl,
+    protected array $clientHeaders,
   ) {
   }
 
@@ -41,10 +43,10 @@ class DataDogLoggerConnector extends Connector
    */
   public function defaultHeaders(): array
   {
-    return [
+    return array_merge([
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
       'service-token' => $this->credentialToken
-    ];
+    ], $this->clientHeaders);
   }
 }

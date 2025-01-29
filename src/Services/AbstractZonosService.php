@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
@@ -23,8 +25,7 @@ abstract class AbstractZonosService
   public function __construct(
     protected readonly ZonosConnector    $connector,
     protected readonly DataMapperService $dataMapperService,
-  ) {
-  }
+  ) {}
 
   /**
    * Store an order in the e-commerce platform
@@ -50,4 +51,6 @@ abstract class AbstractZonosService
    * @return string|null The order data in Zonos format
    */
   abstract public function exportOrder(): ?string;
+
+  abstract public function getCredentialToken(string $type, string $mode): string;
 }

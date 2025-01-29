@@ -11,9 +11,11 @@ class DataDogLogger
    * Create a new DataDogLogger instance
    *
    * @param string $credentialToken Authentication token for API access
+   * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string $credentialToken,
+    protected array  $clientHeaders,
   ) {
   }
 
@@ -27,7 +29,8 @@ class DataDogLogger
   {
     $connector = new DataDogLoggerConnector(
       credentialToken: $this->credentialToken,
-      baseUrl:         'https://plugins.zonos.com'
+      baseUrl:         'https://plugins.zonos.com',
+      clientHeaders:   $this->clientHeaders,
     );
 
     $request = new DataDogLoggerRequest(

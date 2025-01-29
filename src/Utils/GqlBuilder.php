@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Utils;
 
@@ -41,8 +43,7 @@ class GqlBuilder
     protected array   $fields = [],
     protected array   $arguments = [],
     protected ?string $alias = null,
-  ) {
-  }
+  ) {}
 
   /**
    * Add fields to the query
@@ -91,6 +92,12 @@ class GqlBuilder
       : '';
     $args = $this->formatArguments($this->arguments);
     $fields = $this->formatFields($this->fields);
+
+    $args = str_replace('"LIVE"', 'LIVE', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"TEST"', 'TEST', $args); // TODO: Revisar esto con Julio
+    $args = str_replace('"PUBLIC_TOKEN"', 'PUBLIC_TOKEN', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PUBLIC"', 'PUBLIC', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PRIVATE"', 'PRIVATE', $args); // TODO: Revisar esto con Hiram
 
     return <<<gql
 		{$this->type}{$alias} {
