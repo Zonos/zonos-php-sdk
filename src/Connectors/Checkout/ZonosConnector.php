@@ -20,13 +20,11 @@ class ZonosConnector extends Connector
    * Create a new Zonos connector instance
    *
    * @param string $credentialToken Authentication token for API access
-   * @param int $storeId The store id
    * @param string $baseUrl Base URL for API endpoints
    * @param array $clientHeaders Client headers
    */
   public function __construct(
     protected string           $credentialToken,
-    protected int              $storeId,
     protected string           $baseUrl,
     protected array            $clientHeaders,
   ) {
