@@ -38,7 +38,6 @@ class ZonosSdk
    * Create a new ZonosSdk instance
    *
    * @param string $credentialToken Authentication token for API access
-   * @param int $storeId Store ID for API access
    * @param string $baseUrl Base URL for main API endpoints
    * @param array<string, mixed> $config Additional configuration options
    * @param ZonosPlatformType $platformType The type of platform being integrated
@@ -47,7 +46,6 @@ class ZonosSdk
    */
   public function __construct(
     string            $credentialToken,
-    int               $storeId,
     string            $baseUrl,
     array             $config = [],
     ZonosPlatformType $platformType = ZonosPlatformType::Default,
@@ -73,7 +71,6 @@ class ZonosSdk
 
     $this->connector = new ZonosConnector(
       credentialToken: $credentialToken,
-      storeId:         $storeId,
       baseUrl:         $baseUrl,
       clientHeaders:   $clientHeaders,
     );

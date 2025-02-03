@@ -44,7 +44,7 @@ class WordPressService extends AbstractZonosService
 
   public function getCredentialToken(string $type, string $mode): string
   {
-    return $this->connector->pluginCredential(['type' => $type, 'mode' => $mode, 'source' => $this->connector->getSource()])->get('id')->id;
+    return $this->connector->pluginCredential(['type' => $type, 'mode' => $mode, 'source' => $this->connector->getSource()])?->get('id')?->id ?? '';
   }
 
   /**
@@ -601,3 +601,4 @@ class WordPressService extends AbstractZonosService
     return false;
   }
 }
+
