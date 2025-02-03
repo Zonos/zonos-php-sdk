@@ -108,10 +108,9 @@ class DataMapperService
     ];
 
     $measurements[] = [
-      'source' => 'USER_PROVIDED',
       'type' => $valueToType[$type],
       'unitOfMeasure' => $unit,
-      'value' => (float)$value,
+      'value' => (float)$value ?? 0.0,
     ];
 
     return $measurements;

@@ -2,6 +2,7 @@
 
 namespace Zonos\ZonosSdk\Connectors\Checkout;
 
+use Zonos\ZonosSdk\Requests\Pending\Checkout\CartRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\CheckoutSettingsRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\OrderRequest;
 use Zonos\ZonosSdk\Requests\Pending\Checkout\PluginCredentialRequest;
@@ -12,6 +13,17 @@ use Zonos\ZonosSdk\Requests\Pending\Checkout\WebhooksRequest;
  */
 trait ZonosQueries
 {
+  /**
+   * Get cart information
+   *
+   * @param array<string, mixed> $args The arguments for the cart query
+   * @return CartRequest A pending request for cart information
+   */
+  public function cart(array $args = [], bool $withRetry = false): CartRequest
+  {
+    return new CartRequest($this, $args, $withRetry);
+  }
+
   /**
    * Get checkout settings
    *

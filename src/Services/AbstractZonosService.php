@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
+use Zonos\ZonosSdk\Data\Checkout\Cart;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 
 /**
@@ -22,16 +25,16 @@ abstract class AbstractZonosService
   public function __construct(
     protected readonly ZonosConnector    $connector,
     protected readonly DataMapperService $dataMapperService,
-  ) {
-  }
+  ) {}
 
   /**
    * Store an order in the e-commerce platform
    *
    * @param Order $orderData The Zonos order data to store
+   * @param Cart $cartData The Zonos cart data to store
    * @return mixed The created order in the platform's format
    */
-  abstract public function storeOrder(Order $orderData): mixed;
+  abstract public function storeOrder(Order $orderData, Cart $cartData): mixed;
 
 
   /**
@@ -45,9 +48,9 @@ abstract class AbstractZonosService
   /**
    * Export an order from the e-commerce platform in Zonos format
    *
-   * @return array<string, mixed> The order data in Zonos format
+   * @return string|null The order data in Zonos format
    */
-  abstract public function exportOrder(): array;
+  abstract public function exportOrder(): ?string;
 
   abstract public function getCredentialToken(string $type, string $mode): string;
 }

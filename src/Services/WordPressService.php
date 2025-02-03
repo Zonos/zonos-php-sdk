@@ -5,12 +5,18 @@ namespace Zonos\ZonosSdk\Services;
 use InvalidArgumentException;
 use RuntimeException;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
+use Zonos\ZonosSdk\Data\Checkout\Cart;
+use Zonos\ZonosSdk\Data\Checkout\CartAdjustment;
 use Zonos\ZonosSdk\Data\Checkout\Enums\OrderStatus;
 use Zonos\ZonosSdk\Data\Checkout\Enums\PartyType;
 use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
 use Zonos\ZonosSdk\Data\Checkout\Item;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 use Zonos\ZonosSdk\Data\Checkout\Party;
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartAdjustmentInput;
+use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
+use Zonos\ZonosSdk\Data\Checkout\Enums\CartAdjustmentType;
+use Zonos\ZonosSdk\Data\Checkout\Enums\CurrencyCode;
 
 /**
  * WordPress-specific implementation of Zonos service
@@ -43,43 +49,109 @@ class WordPressService extends AbstractZonosService
 
   /**
    * Export a WooCommerce order from the WordPress database
-   * in the Zonos Format
+   * and create a cart in Zonos
    *
-   * @return array<string, mixed> The order data in Zonos format
+   * @return string|null The cart ID
    * @throws RuntimeException When WooCommerce is not active
    */
-  public function exportOrder(): array
+  public function exportOrder(): ?string
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
     }
+    $cart = WC()->cart;
 
     $items = [];
-    $cart = WC()->cart;
+    $adjustments = [];
+    $appliedCoupons = $cart->get_applied_coupons();
 
     foreach ($cart->get_cart() as $cartItem) {
       $product = wc_get_product($cartItem['product_id']);
+      if (!empty($cartItem['variation_id'])) {
+        $product = wc_get_product($cartItem['variation_id']);
+      }
       $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
 
-      if ($mappedProduct['attributes'] === null) {
-        $mappedProduct['attributes'] = [];
+      $mappedProduct['metadata'] = [['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]];
+
+      $items[] = $mappedProduct;
+
+      foreach ($appliedCoupons as $couponCode) {
+        $coupon = new \WC_Coupon($couponCode);
+        $discountApplied = $this->getDiscountApplied($coupon, $cartItem);
+        if ($discountApplied !== null) {
+          $type = CartAdjustmentType::ITEM;
+          if ($coupon->get_discount_type() === 'fixed_cart') {
+            $type = CartAdjustmentType::CART_TOTAL;
+          }
+
+          $adjustment = new CartAdjustmentInput(
+            amount:       $discountApplied,
+            currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
+            description:  $couponCode,
+            productId:    $mappedProduct['productId'] ?? null,
+            sku:          $mappedProduct['sku'] ?? null,
+            type:         $type,
+          );
+
+          $adjustments[] = $adjustment->toArray();
+        }
       }
-      array_push($mappedProduct['attributes'], ['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]);
-      array_push($items, $mappedProduct);
     }
 
-    return $items;
+    $cartCreateInput = CartCreateInput::fromArray(
+      [
+        'adjustments' => $adjustments,
+        'items' => $items,
+      ]
+    );
+
+    $cart = $this->connector->cartCreate($cartCreateInput)->get('id');
+
+    if ($cart === null) {
+      throw new InvalidArgumentException('Failed to create cart');
+    }
+
+    return $cart->id;
+  }
+
+  /**
+   * Get the discount applied to a cart item
+   *
+   * @param \WC_Coupon $coupon The coupon
+   * @param array $cartItem The cart item
+   * @return float|null The discount amount or null
+   */
+  private function getDiscountApplied(\WC_Coupon $coupon, array $cartItem): ?float
+  {
+    $isValidForProduct = $coupon->is_valid_for_product($cartItem['data']);
+    if ($isValidForProduct || !$isValidForProduct && $coupon->get_discount_type() === 'fixed_cart') {
+      switch ($coupon->get_discount_type()) {
+        case 'percent':
+          return -1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
+        case 'fixed_product':
+          return -1 * (float)($coupon->get_amount() * $cartItem['quantity']);
+        case 'fixed_cart':
+          $cartSubtotal = WC()->cart->subtotal;
+          $proportion = $cartItem['line_subtotal'] / $cartSubtotal;
+          return -1 * (float)($coupon->get_amount() * $proportion);
+        default:
+          return null;
+      }
+    }
+    return null;
   }
 
   /**
    * Store a Zonos order in WooCommerce
    *
    * @param Order $orderData The order data from Zonos
+   * @param Cart $cartData The cart data from Zonos
    * @return \WC_Order The created WooCommerce order
    * @throws InvalidArgumentException When order creation fails
    * @throws RuntimeException When WooCommerce is not active
    */
-  public function storeOrder(Order $orderData): \WC_Order
+  public function storeOrder(Order $orderData, Cart $cartData): \WC_Order
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
@@ -92,11 +164,9 @@ class WordPressService extends AbstractZonosService
 
     try {
       $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
-      $this->addOrderItems($wooOrder, $orderData->items);
+      $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
-      $this->processOrderTotals($wooOrder, $orderData);
-
-      $wooOrder->calculate_totals();
+      $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments);
       $wooOrder->save();
 
       return $wooOrder;
@@ -214,9 +284,10 @@ class WordPressService extends AbstractZonosService
    *
    * @param \WC_Order $wooOrder The order
    * @param Item[] $items The items/products to add
+   * @param CartAdjustment[] $adjustments The adjustments to add
    * @throws InvalidArgumentException If the product is not found
    */
-  private function addOrderItems(\WC_Order $wooOrder, array $items): void
+  private function addOrderItems(\WC_Order $wooOrder, array $items, array $adjustments): void
   {
     foreach ($items as $item) {
       $product = null;
@@ -224,7 +295,7 @@ class WordPressService extends AbstractZonosService
       if (!empty($item->sku)) {
         $productId = wc_get_product_id_by_sku($item->sku);
         if ($productId) {
-          $product = wc_get_product($productId);
+          $product = wc_get_product_object($productId);
         }
       }
 
@@ -236,23 +307,29 @@ class WordPressService extends AbstractZonosService
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
 
+
+      $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
+      $total = $subtotal;
+      foreach ($adjustments as $adjustment) {
+        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $item->sku) {
+          $total += $adjustment->amount;
+        }
+      }
       $itemId = $wooOrder->add_product(
         $product,
         $item->quantity,
         [
-          'subtotal' => $item->quantity * ($item->amount ?? $product->get_price()),
-          'total' => $item->quantity * ($item->amount ?? $product->get_price()),
+          'subtotal' => $subtotal,
+          'total' => $total,
         ]
       );
 
       $orderItem = $wooOrder->get_item($itemId);
       foreach ($item->attributes as $attribute) {
-        if ($attribute->key !== 'raw_cart_item') {
-          $taxonomy = wc_attribute_taxonomy_name($attribute->key);
-          $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
-          $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-          $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
-        }
+        $taxonomy = wc_attribute_taxonomy_name($attribute->key);
+        $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
+        $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
+        $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
       }
       $orderItem->save();
     }
@@ -318,8 +395,9 @@ class WordPressService extends AbstractZonosService
    *
    * @param \WC_Order $wooOrder The order
    * @param Order $orderData The order data
+   * @param CartAdjustment[] $adjustments The adjustments
    */
-  private function processOrderTotals(\WC_Order $wooOrder, Order $orderData): void
+  private function processOrderTotals(\WC_Order $wooOrder, Order $orderData, array $adjustments): void
   {
     if ($orderData->amountSubtotals === null) {
       return;
@@ -333,13 +411,39 @@ class WordPressService extends AbstractZonosService
       return $amount;
     };
 
-    $wooOrder->set_discount_total($convertAmount($orderData->amountSubtotals->discounts));
+    $discountAmount = $convertAmount($orderData->amountSubtotals->discounts);
+
+    $discountsByDescription = [];
+    foreach ($adjustments as $adjustment) {
+      $description = $adjustment->description;
+      if (!isset($discountsByDescription[$description])) {
+        $discountsByDescription[$description] = 0;
+      }
+      $discountsByDescription[$description] += $adjustment->amount;
+    }
+
+    foreach ($discountsByDescription as $description => $amount) {
+      $coupon = new \WC_Order_Item_Coupon();
+      $coupon->set_code($description);
+      $coupon->set_discount(abs($amount));
+      $coupon->set_discount_tax(0);
+      $wooOrder->add_item($coupon);
+    }
+
     $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
 
     $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
     $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
+
+    $wooOrder->calculate_totals(false);
+
+    $wooOrder->set_discount_total(abs($discountAmount));
+    $wooOrder->set_discount_tax(0);
+
+    $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
+    $wooOrder->set_total($convertAmount($newTotal));
   }
 
   /**
