@@ -1,30 +1,56 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
-use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
+use Zonos\ZonosSdk\Data\Checkout\Cart;
+use Zonos\ZonosSdk\Data\Checkout\Order;
 
 /**
- * Abstract class for Zonos services
+ * Abstract base class for Zonos services
+ *
+ * Provides common functionality and contract for services that handle
+ * Zonos order processing and data mapping.
  */
 abstract class AbstractZonosService
 {
   /**
    * Constructor for the AbstractZonosService
    *
-   * @param ZonosConnector $connector The connector instance
+   * @param ZonosConnector $connector The Zonos API connector instance
+   * @param DataMapperService $dataMapperService Service for mapping data between systems
    */
   public function __construct(
     protected readonly ZonosConnector    $connector,
-    protected readonly DataMapperService $dataMapper,
-  ) {
-  }
+    protected readonly DataMapperService $dataMapperService,
+  ) {}
 
   /**
-   * Store an order in the database
+   * Store an order in the e-commerce platform
    *
-   * @param array $orderData Order data with required fields
-   * @return int The ID of the created order
+   * @param Order $orderData The Zonos order data to store
+   * @param Cart $cartData The Zonos cart data to store
+   * @return mixed The created order in the platform's format
    */
-  abstract public function storeOrder(array $orderData): int;
+  abstract public function storeOrder(Order $orderData, Cart $cartData): mixed;
+
+
+  /**
+   * Update an existing order in the e-commerce platform
+   *
+   * @param Order $orderData
+   * @return mixed The updated order in the platform's format
+   */
+  abstract public function updateOrder(Order $orderData): mixed;
+
+  /**
+   * Export an order from the e-commerce platform in Zonos format
+   *
+   * @return string|null The order data in Zonos format
+   */
+  abstract public function exportOrder(): ?string;
+
+  abstract public function getCredentialToken(string $type, string $mode): string;
 }

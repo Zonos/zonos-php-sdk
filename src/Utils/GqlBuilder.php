@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Utils;
 
@@ -41,8 +43,7 @@ class GqlBuilder
     protected array   $fields = [],
     protected array   $arguments = [],
     protected ?string $alias = null,
-  ) {
-  }
+  ) {}
 
   /**
    * Add fields to the query
@@ -92,6 +93,12 @@ class GqlBuilder
     $args = $this->formatArguments($this->arguments);
     $fields = $this->formatFields($this->fields);
 
+    $args = str_replace('"LIVE"', 'LIVE', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"TEST"', 'TEST', $args); // TODO: Revisar esto con Julio
+    $args = str_replace('"PUBLIC_TOKEN"', 'PUBLIC_TOKEN', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PUBLIC"', 'PUBLIC', $args); // TODO: Revisar esto con Hiram
+    $args = str_replace('"PRIVATE"', 'PRIVATE', $args); // TODO: Revisar esto con Hiram
+
     return <<<gql
 		{$this->type}{$alias} {
 			{$this->name}{$args} {
@@ -121,17 +128,35 @@ class GqlBuilder
         $line = "{$key}: ";
 
         if (is_object($value)) {
-          $value = array_filter((array)$value);
+          if ($value instanceof \UnitEnum) {
+            return "{$key}: {$value->value}";
+          }
+          $value = array_filter((array)$value, fn($v) => $v !== null);
         }
 
         if (is_array($value)) {
-          $line .= "{\n{$indent}\t" . $this->formatArguments($value, $depth + 1) . "\n{$indent}}";
+          if (array_is_list($value)) {
+            $formattedItems = array_map(
+              function ($item) use ($depth, $indent) {
+                if (is_array($item)) {
+                  return "{\n{$indent}\t" . $this->formatArguments($item, $depth + 2) . "\n{$indent}}";
+                }
+                return "{\n{$indent}\t" . $this->formatArguments(array_filter((array)$item, fn($v) => $v !== null), $depth + 2) . "\n{$indent}}";
+              },
+              $value
+            );
+            $line .= "[\n{$indent}\t" . implode(",\n{$indent}\t", $formattedItems) . "\n{$indent}]";
+          } else {
+            $line .= "{\n{$indent}\t" . $this->formatArguments($value, $depth + 1) . "\n{$indent}}";
+          }
         } else {
           $line .= json_encode($value);
         }
 
         return $line;
-      }, $arguments, array_keys($arguments)
+      },
+      $arguments,
+      array_keys($arguments)
     );
 
     $resultString = implode(",\n{$indent}", $result);
@@ -172,7 +197,9 @@ class GqlBuilder
         }
 
         return $line;
-      }, $keys, array_keys($keys)
+      },
+      $keys,
+      array_keys($keys)
     );
 
     return implode("\n{$indent}", $result);

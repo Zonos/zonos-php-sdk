@@ -2,9 +2,6 @@
 
 namespace Zonos\ZonosSdk\Enums;
 
-/**
- * Enum for the platform type
- */
 enum ZonosPlatformType: string
 {
   case Wordpress = 'wordpress';

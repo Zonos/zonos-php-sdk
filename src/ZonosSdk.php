@@ -2,49 +2,113 @@
 
 namespace Zonos\ZonosSdk;
 
+use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
-use Zonos\ZonosSdk\Connectors\ZonosConnector;
+use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Enums\ZonosPlatformType;
 use Zonos\ZonosSdk\Services\AbstractZonosService;
 use Zonos\ZonosSdk\Services\DataMapperService;
 use Zonos\ZonosSdk\Services\ZonosServiceFactory;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
- * Factory class for creating Zonos SDK instances
+ * Main entry point for the Zonos SDK
+ *
+ * Provides access to various Zonos services and connectors, handling
+ * initialization and configuration of the SDK components.
  */
 class ZonosSdk
 {
-  private ZonosConnector $connector;
-  private AbstractZonosService $service;
-
-  public function __construct(
-    string            $credential_token,
-    string            $base_url,
-    array             $config = [],
-    ZonosPlatformType $platform_type = ZonosPlatformType::Default
-  ) {
-    $zonos_config = new ZonosConfig($config);
-    $data_mapper_service = new DataMapperService($zonos_config);
-    $this->connector = new ZonosConnector(
-      credential_token: $credential_token,
-      base_url:         $base_url,
-    );
-    $this->service = ZonosServiceFactory::createService($platform_type, $this->connector, $data_mapper_service);
-  }
-
+  /**
+   * @var ZonosConnector The main Zonos API connector
+   */
+  private readonly ZonosConnector $connector;
 
   /**
-   * Get the service instance
+   * @var AbstractZonosService The platform-specific service implementation
+   */
+  private readonly AbstractZonosService $service;
+
+  /**
+   * @var DataDogLogger The logger service
+   */
+  private readonly DataDogLogger $logger;
+
+  /**
+   * Create a new ZonosSdk instance
    *
-   * @return AbstractZonosService
+   * @param string $credentialToken Authentication token for API access
+   * @param string $baseUrl Base URL for main API endpoints
+   * @param array<string, mixed> $config Additional configuration options
+   * @param ZonosPlatformType $platformType The type of platform being integrated
+   * @param string $platformVersion The version of platform being integrated
+   * @throws InvalidArgumentException When invalid configuration is provided
+   */
+  public function __construct(
+    string            $credentialToken,
+    string            $baseUrl,
+    array             $config = [],
+    ZonosPlatformType $platformType = ZonosPlatformType::Default,
+    string            $platformVersion = ''
+  ) {
+    $clientHeaders = [
+      'x-client-name' => $platformType->value.' - (zonos-sdk)',
+      'x-client-version' => $platformVersion.' (sdk:1.0.0)'
+    ];
+
+    $zonosConfig = new ZonosConfig(
+      config: $config
+    );
+
+    $dataMapperService = new DataMapperService(
+      config: $zonosConfig
+    );
+
+    $this->logger = new DataDogLogger(
+      credentialToken: $credentialToken,
+      clientHeaders:   $clientHeaders,
+    );
+
+    $this->connector = new ZonosConnector(
+      credentialToken: $credentialToken,
+      baseUrl:         $baseUrl,
+      clientHeaders:   $clientHeaders,
+    );
+
+    $this->service = ZonosServiceFactory::createService(
+      platformType:      $platformType,
+      connector:         $this->connector,
+      dataMapperService: $dataMapperService,
+    );
+  }
+
+  /**
+   * Get the platform-specific service implementation
+   *
+   * @return AbstractZonosService The service instance
    */
   public function service(): AbstractZonosService
   {
     return $this->service;
   }
 
+  /**
+   * Get the main API connector
+   *
+   * @return ZonosConnector The connector instance
+   */
   public function connector(): ZonosConnector
   {
     return $this->connector;
+  }
+
+  /**
+   * Get the logger service
+   *
+   * @return DataDogLogger The logger instance
+   */
+  public function logger(): DataDogLogger
+  {
+    return $this->logger;
   }
 }
