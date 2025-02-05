@@ -2,6 +2,8 @@
 
 namespace Zonos\ZonosSdk;
 
+define('VERSION', '0.1.0-beta');
+
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
@@ -53,7 +55,7 @@ class ZonosSdk
   ) {
     $clientHeaders = [
       'x-client-name' => $platformType->value.' - (zonos-sdk)',
-      'x-client-version' => $platformVersion.' (sdk:1.0.0)'
+      'x-client-version' => $platformVersion.' (sdk:'.VERSION.')'
     ];
 
     $zonosConfig = new ZonosConfig(
