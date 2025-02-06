@@ -2,8 +2,10 @@
 
 namespace Zonos\ZonosSdk\Services;
 
+use http\Exception\RuntimeException;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
  * Service for mapping data between different formats and structures
@@ -19,7 +21,8 @@ class DataMapperService
    * @param ZonosConfig $config Configuration settings for data mapping
    */
   public function __construct(
-    private readonly ZonosConfig $config
+    private readonly ZonosConfig $config,
+    private readonly DataDogLogger $logger
   ) {
   }
 
@@ -60,6 +63,7 @@ class DataMapperService
     $productData = $product->get_data();
     $mapping = $this->config->getMapping('product');
     if (!$mapping) {
+      $this->logger->sendLog('Product mapping configuration is missing');
       throw new InvalidArgumentException('Product mapping configuration is missing');
     }
 
@@ -129,35 +133,42 @@ class DataMapperService
     $productAttributes = [];
 
     foreach ($attributes as $attribute) {
-      $parts = explode('.', $attribute);
-      $value = $cart_item;
-      $found = true;
-
-      foreach ($parts as $part) {
-        if (isset($value[$part])) {
-          $value = $value[$part];
-        } else {
-          $value = null;
-          $found = false;
-          break;
+      try {
+        $parts = explode('.', $attribute);
+        if (!$parts) {
+          throw new RuntimeException('Error mapping attribute ' . $attribute);
         }
-      }
+        $value = $cart_item;
+        $found = true;
 
-      if (!$found) {
+        foreach ($parts as $part) {
+          if (isset($value[$part])) {
+            $value = $value[$part];
+          } else {
+            $value = null;
+            $found = false;
+            break;
+          }
+        }
 
-        $variation = $cart_item['variation'] ?? null;
+        if (!$found) {
 
-        $value = $variation
-          ? ($variation['attribute_pa_' . $attribute] ?? ($variation['attribute_' . $attribute] ?? null))
-          : $product->get_attribute($attribute);
-      }
+          $variation = $cart_item['variation'] ?? null;
+
+          $value = $variation
+            ? ($variation['attribute_pa_' . $attribute] ?? ($variation['attribute_' . $attribute] ?? null))
+            : $product->get_attribute($attribute);
+        }
 
 
-      if ($value) {
-        $productAttributes[] = [
-          'key' => $attribute,
-          'value' => $value,
-        ];
+        if ($value) {
+          $productAttributes[] = [
+            'key' => $attribute,
+            'value' => $value,
+          ];
+        }
+      } catch (\Exception $e) {
+        $this->logger->sendLog('Error mapping attribute ' . $attribute);
       }
     }
 
@@ -183,23 +194,31 @@ class DataMapperService
     array       $productData,
     array       $cart_item
   ): array {
-    if ($value && str_contains($value, '.')) {
-      $path = explode('.', $value);
-      if ($path[0] === 'attributes') {
-        $result[$key] = $product->get_attribute($path[1]);
-        return $result;
+    try {
+      if ($value && str_contains($value, '.')) {
+        $path = explode('.', $value);
+
+        if (!$path) {
+          throw new Exception('Error parsing map value');
+        }
+
+        if ($path[0] === 'attributes') {
+          $result[$key] = $product->get_attribute($path[1]);
+          return $result;
+        }
       }
+
+      $result[$key] = match ($key) {
+        'attributes' => $value ? $this->mapProductAttributes(explode(',', $value), $product, $cart_item) : [],
+        'currencyCode' => $value,
+        'amount' => (float)($productData[$value] ?? 0),
+        'productId' => (string)($productData[$value] ?? ''),
+        'hsCode' => $productData[$value] ?? '',
+        default => $productData[$value] ?? $value,
+      };
+    } catch (\Exception $e) {
+      $this->logger->sendLog('Error parsing map ['.$key.'] with value: '.$value);
     }
-
-    $result[$key] = match ($key) {
-      'attributes' => $value ? $this->mapProductAttributes(explode(',', $value), $product, $cart_item) : [],
-      'currencyCode' => $value,
-      'amount' => (float)($productData[$value] ?? 0),
-      'productId' => (string)($productData[$value] ?? ''),
-      'hsCode' => $productData[$value] ?? '',
-      default => $productData[$value] ?? $value,
-    };
-
     return $result;
   }
 

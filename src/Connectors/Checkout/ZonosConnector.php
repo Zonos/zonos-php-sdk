@@ -61,7 +61,7 @@ class ZonosConnector extends Connector
 
   public function getTestCredentialToken(): string
   {
-    return $this->testCredentialToken;
+    return $this->testCredentialToken ?? '';
   }
 
   public function getSource(): string

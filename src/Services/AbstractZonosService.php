@@ -7,6 +7,7 @@ namespace Zonos\ZonosSdk\Services;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Data\Checkout\Cart;
 use Zonos\ZonosSdk\Data\Checkout\Order;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
  * Abstract base class for Zonos services
@@ -21,10 +22,12 @@ abstract class AbstractZonosService
    *
    * @param ZonosConnector $connector The Zonos API connector instance
    * @param DataMapperService $dataMapperService Service for mapping data between systems
+   * @param DataDogLogger $logger Service to send logs into datadog
    */
   public function __construct(
     protected readonly ZonosConnector    $connector,
     protected readonly DataMapperService $dataMapperService,
+    protected readonly DataDogLogger     $logger,
   ) {}
 
   /**

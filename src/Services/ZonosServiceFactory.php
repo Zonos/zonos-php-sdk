@@ -5,6 +5,7 @@ namespace Zonos\ZonosSdk\Services;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Connectors\Checkout\ZonosConnector;
 use Zonos\ZonosSdk\Enums\ZonosPlatformType;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
  * Factory for creating platform-specific Zonos service instances
@@ -26,12 +27,14 @@ class ZonosServiceFactory
   public static function createService(
     ZonosPlatformType $platformType,
     ZonosConnector    $connector,
-    DataMapperService $dataMapperService
+    DataMapperService $dataMapperService,
+    DataDogLogger     $logger,
   ): AbstractZonosService {
     return match ($platformType) {
       ZonosPlatformType::Wordpress => new WordPressService(
         connector:         $connector,
         dataMapperService: $dataMapperService,
+        logger:            $logger
       ),
       default => throw new InvalidArgumentException('Unsupported platform type: ' . $platformType->value),
     };
