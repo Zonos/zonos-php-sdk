@@ -17,6 +17,7 @@ use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartAdjustmentInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
 use Zonos\ZonosSdk\Data\Checkout\Enums\CartAdjustmentType;
 use Zonos\ZonosSdk\Data\Checkout\Enums\CurrencyCode;
+use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
  * WordPress-specific implementation of Zonos service
@@ -34,11 +35,13 @@ class WordPressService extends AbstractZonosService
    */
   public function __construct(
     ZonosConnector    $connector,
-    DataMapperService $dataMapperService
+    DataMapperService $dataMapperService,
+    DataDogLogger     $logger,
   ) {
     parent::__construct(
       connector:         $connector,
       dataMapperService: $dataMapperService,
+      logger:            $logger,
     );
   }
 
@@ -66,36 +69,44 @@ class WordPressService extends AbstractZonosService
     $appliedCoupons = $cart->get_applied_coupons();
 
     foreach ($cart->get_cart() as $cartItem) {
-      $product = wc_get_product($cartItem['product_id']);
-      if (!empty($cartItem['variation_id'])) {
-        $product = wc_get_product($cartItem['variation_id']);
-      }
-      $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
-
-      $mappedProduct['metadata'] = [['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]];
-
-      $items[] = $mappedProduct;
-
-      foreach ($appliedCoupons as $couponCode) {
-        $coupon = new \WC_Coupon($couponCode);
-        $discountApplied = $this->getDiscountApplied($coupon, $cartItem);
-        if ($discountApplied !== null) {
-          $type = CartAdjustmentType::ITEM;
-          if ($coupon->get_discount_type() === 'fixed_cart') {
-            $type = CartAdjustmentType::CART_TOTAL;
-          }
-
-          $adjustment = new CartAdjustmentInput(
-            amount:       $discountApplied,
-            currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
-            description:  $couponCode,
-            productId:    $mappedProduct['productId'] ?? null,
-            sku:          $mappedProduct['sku'] ?? null,
-            type:         $type,
-          );
-
-          $adjustments[] = $adjustment->toArray();
+      try {
+        $product = wc_get_product($cartItem['product_id']);
+        if (!empty($cartItem['variation_id'])) {
+          $product = wc_get_product($cartItem['variation_id']);
         }
+        $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
+
+        $mappedProduct['metadata'] = [['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]];
+
+        $items[] = $mappedProduct;
+
+        foreach ($appliedCoupons as $couponCode) {
+          try {
+            $coupon = new \WC_Coupon($couponCode);
+            $discountApplied = $this->getDiscountApplied($coupon, $cartItem);
+            if ($discountApplied !== null) {
+              $type = CartAdjustmentType::ITEM;
+              if ($coupon->get_discount_type() === 'fixed_cart') {
+                $type = CartAdjustmentType::CART_TOTAL;
+              }
+
+              $adjustment = new CartAdjustmentInput(
+                amount:       $discountApplied,
+                currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
+                description:  $couponCode,
+                productId:    $mappedProduct['productId'] ?? null,
+                sku:          $mappedProduct['sku'] ?? null,
+                type:         $type,
+              );
+
+              $adjustments[] = $adjustment->toArray();
+            }
+          } catch (\Exception $e) {
+            $this->logger->sendLog('Error processing item coupon in export order: '.$e->getMessage());
+          }
+        }
+      } catch (\Exception $e) {
+        $this->logger->sendLog('Error processing item in export order: '.$e->getMessage());
       }
     }
 
@@ -106,7 +117,7 @@ class WordPressService extends AbstractZonosService
       ]
     );
 
-    $cart = $this->connector->cartCreate($cartCreateInput)->get('id');
+    $cart = $this->connector->cartCreate($cartCreateInput)?->get('id') ?? null;
 
     if ($cart === null) {
       throw new InvalidArgumentException('Failed to create cart');
@@ -174,6 +185,7 @@ class WordPressService extends AbstractZonosService
       if ($wooOrder !== null) {
         $wooOrder->delete(true);
       }
+      $this->logger->sendLog('Error creating order: '.$e->getMessage());
       throw new InvalidArgumentException('Failed to create order: ' . $e->getMessage());
     }
   }
@@ -326,10 +338,14 @@ class WordPressService extends AbstractZonosService
 
       $orderItem = $wooOrder->get_item($itemId);
       foreach ($item->attributes as $attribute) {
-        $taxonomy = wc_attribute_taxonomy_name($attribute->key);
-        $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
-        $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-        $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
+        try {
+          $taxonomy = wc_attribute_taxonomy_name($attribute->key);
+          $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
+          $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
+          $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
+        } catch (\Exception $e) {
+          $this->logger->sendLog('Error processing attributes in order creation: '.$e->getMessage());
+        }
       }
       $orderItem->save();
     }
@@ -399,51 +415,55 @@ class WordPressService extends AbstractZonosService
    */
   private function processOrderTotals(\WC_Order $wooOrder, Order $orderData, array $adjustments): void
   {
-    if ($orderData->amountSubtotals === null) {
-      return;
-    }
-
-    $exchangeRate = $this->getExchangeRate($orderData);
-    $convertAmount = function (float $amount) use ($exchangeRate): float {
-      if ($exchangeRate !== null) {
-        return round($amount / $exchangeRate->rate, 2);
+    try {
+      if ($orderData->amountSubtotals === null) {
+        return;
       }
-      return $amount;
-    };
 
-    $discountAmount = $convertAmount($orderData->amountSubtotals->discounts);
+      $exchangeRate = $this->getExchangeRate($orderData);
+      $convertAmount = function (float $amount) use ($exchangeRate): float {
+        if ($exchangeRate !== null) {
+          return round($amount / $exchangeRate->rate, 2);
+        }
+        return $amount;
+      };
 
-    $discountsByDescription = [];
-    foreach ($adjustments as $adjustment) {
-      $description = $adjustment->description;
-      if (!isset($discountsByDescription[$description])) {
-        $discountsByDescription[$description] = 0;
+      $discountAmount = $convertAmount($orderData->amountSubtotals->discounts);
+
+      $discountsByDescription = [];
+      foreach ($adjustments as $adjustment) {
+        $description = $adjustment->description;
+        if (!isset($discountsByDescription[$description])) {
+          $discountsByDescription[$description] = 0;
+        }
+        $discountsByDescription[$description] += $adjustment->amount;
       }
-      $discountsByDescription[$description] += $adjustment->amount;
+
+      foreach ($discountsByDescription as $description => $amount) {
+        $coupon = new \WC_Order_Item_Coupon();
+        $coupon->set_code($description);
+        $coupon->set_discount(abs($amount));
+        $coupon->set_discount_tax(0);
+        $wooOrder->add_item($coupon);
+      }
+
+      $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
+
+      $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
+      $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
+      $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
+      $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
+
+      $wooOrder->calculate_totals(false);
+
+      $wooOrder->set_discount_total(abs($discountAmount));
+      $wooOrder->set_discount_tax(0);
+
+      $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
+      $wooOrder->set_total($convertAmount($newTotal));
+    } catch (\Exception $e) {
+      $this->logger->sendLog('Error processing order totals: '.$e->getMessage());
     }
-
-    foreach ($discountsByDescription as $description => $amount) {
-      $coupon = new \WC_Order_Item_Coupon();
-      $coupon->set_code($description);
-      $coupon->set_discount(abs($amount));
-      $coupon->set_discount_tax(0);
-      $wooOrder->add_item($coupon);
-    }
-
-    $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
-
-    $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
-    $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
-
-    $wooOrder->calculate_totals(false);
-
-    $wooOrder->set_discount_total(abs($discountAmount));
-    $wooOrder->set_discount_tax(0);
-
-    $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
-    $wooOrder->set_total($convertAmount($newTotal));
   }
 
   /**
@@ -523,41 +543,45 @@ class WordPressService extends AbstractZonosService
    */
   private function updateOrderTrackingNumbers(\WC_Order $wooOrder, array $shipments): bool
   {
-    if (empty($shipments)) {
-      return false;
-    }
-
-    $newTrackingNumbers = [];
-    foreach ($shipments as $shipment) {
-      foreach ($shipment->trackingDetails as $trackingDetail) {
-        $newTrackingNumbers[] = wc_clean($trackingDetail->number);
+    try {
+      if (empty($shipments)) {
+        return false;
       }
-    }
 
-    $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
-    $existingTrackingNumbers = !empty($existingTrackingString)
-      ? array_map('trim', explode(',', $existingTrackingString))
-      : [];
-
-    sort($newTrackingNumbers);
-    sort($existingTrackingNumbers);
-
-    if ($newTrackingNumbers !== $existingTrackingNumbers) {
-      $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $newTrackingNumbers));
-
-      $addedNumbers = array_diff($newTrackingNumbers, $existingTrackingNumbers);
-      if (!empty($addedNumbers)) {
-        $wooOrder->add_order_note(
-          sprintf(
-            'New tracking number(s) added: %s',
-            implode(', ', $addedNumbers)
-          ),
-          false
-        );
+      $newTrackingNumbers = [];
+      foreach ($shipments as $shipment) {
+        foreach ($shipment->trackingDetails as $trackingDetail) {
+          $newTrackingNumbers[] = wc_clean($trackingDetail->number);
+        }
       }
-      return true;
-    }
 
+      $existingTrackingString = $wooOrder->get_meta('zonos_tracking_numbers', true);
+      $existingTrackingNumbers = !empty($existingTrackingString)
+        ? array_map('trim', explode(',', $existingTrackingString))
+        : [];
+
+      sort($newTrackingNumbers);
+      sort($existingTrackingNumbers);
+
+      if ($newTrackingNumbers !== $existingTrackingNumbers) {
+        $wooOrder->update_meta_data('zonos_tracking_numbers', implode(', ', $newTrackingNumbers));
+
+        $addedNumbers = array_diff($newTrackingNumbers, $existingTrackingNumbers);
+        if (!empty($addedNumbers)) {
+          $wooOrder->add_order_note(
+            sprintf(
+              'New tracking number(s) added: %s',
+              implode(', ', $addedNumbers)
+            ),
+            false
+          );
+        }
+        return true;
+      }
+
+    } catch (\Exception $e) {
+      $this->logger->sendLog('Error updating order tracking numbers: '.$e->getMessage());
+    }
     return false;
   }
 
