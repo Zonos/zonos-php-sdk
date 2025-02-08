@@ -46,7 +46,7 @@ trait ZonosMutations
    */
   public function orderUpdateAccountOrderNumber(OrderUpdateAccountOrderNumberInput $input): OrderUpdateAccountOrderNumberRequest
   {
-    return new OrderUpdateAccountOrderNumberRequest($this, ['input' => $input]);
+    return new OrderUpdateAccountOrderNumberRequest($this, ['input' => $input], true);
   }
 
   /**
