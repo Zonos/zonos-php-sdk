@@ -2,7 +2,7 @@
 
 namespace Zonos\ZonosSdk;
 
-define('VERSION', '0.2.0-beta');
+define('VERSION', '0.3.0-beta');
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
@@ -54,8 +54,8 @@ class ZonosSdk
     string            $platformVersion = ''
   ) {
     $clientHeaders = [
-      'x-client-name' => $platformType->value.' - (zonos-sdk)',
-      'x-client-version' => $platformVersion.' (sdk:'.VERSION.')'
+      'x-client-name' => $platformType->value . ' - (zonos-sdk)',
+      'x-client-version' => $platformVersion . ' (sdk:' . VERSION . ')'
     ];
 
     $zonosConfig = new ZonosConfig(
