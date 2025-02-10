@@ -10,12 +10,14 @@ use Zonos\ZonosSdk\Utils\GqlBuilder;
 
 class OrderUpdateAccountOrderNumberRequest extends PendingZonosRequest
 {
+  private bool $withRetry;
   protected const DEFAULT_ATTRIBUTES = [
     'id',
   ];
 
-  public function __construct(ZonosConnector $connector, public array $args = [])
+  public function __construct(ZonosConnector $connector, public array $args = [], bool $withRetry)
   {
+    $this->withRetry = $withRetry;
     parent::__construct($connector, GqlBuilder::make('mutation', 'orderUpdateAccountOrderNumber', $args));
   }
 
@@ -27,8 +29,14 @@ class OrderUpdateAccountOrderNumberRequest extends PendingZonosRequest
   public function response(string ...$fields): OrderUpdateAccountOrderNumberMutationResponse
   {
     $query = $this->query->withFields($this->normalizeFields($fields));
+    $request = new ZonosRequest(OrderUpdateAccountOrderNumberMutationResponse::class, (string)$query);
+    $response = $this->connector->send($request)->throw();
 
-    $response = $this->connector->send(new ZonosRequest(OrderUpdateAccountOrderNumberMutationResponse::class, (string)$query))->throw();
+    if ($response->json('data') === null && $this->withRetry) {
+      $request->headers()->add('credentialToken', $this->connector->getTestCredentialToken());
+      $response = $this->connector->send($request)->throw();
+    }
+
     assert($response instanceof OrderUpdateAccountOrderNumberMutationResponse);
 
     return $response;
