@@ -44,9 +44,9 @@ trait ZonosMutations
    * @param OrderUpdateAccountOrderNumberInput $input The input data for updating order number
    * @return OrderUpdateAccountOrderNumberRequest A pending request for order update
    */
-  public function orderUpdateAccountOrderNumber(OrderUpdateAccountOrderNumberInput $input): OrderUpdateAccountOrderNumberRequest
+  public function orderUpdateAccountOrderNumber(OrderUpdateAccountOrderNumberInput $input, bool $withRetry = false): OrderUpdateAccountOrderNumberRequest
   {
-    return new OrderUpdateAccountOrderNumberRequest($this, ['input' => $input], true);
+    return new OrderUpdateAccountOrderNumberRequest($this, ['input' => $input], $withRetry);
   }
 
   /**
