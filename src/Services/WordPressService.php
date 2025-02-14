@@ -102,11 +102,11 @@ class WordPressService extends AbstractZonosService
               $adjustments[] = $adjustment->toArray();
             }
           } catch (\Exception $e) {
-            $this->logger->sendLog('Error processing item coupon in export order: '.$e->getMessage());
+            $this->logger->sendLog('Error processing item coupon in export order: ' . $e->getMessage());
           }
         }
       } catch (\Exception $e) {
-        $this->logger->sendLog('Error processing item in export order: '.$e->getMessage());
+        $this->logger->sendLog('Error processing item in export order: ' . $e->getMessage());
       }
     }
 
@@ -185,7 +185,7 @@ class WordPressService extends AbstractZonosService
       if ($wooOrder !== null) {
         $wooOrder->delete(true);
       }
-      $this->logger->sendLog('Error creating order: '.$e->getMessage());
+      $this->logger->sendLog('Error creating order: ' . $e->getMessage());
       throw new InvalidArgumentException('Failed to create order: ' . $e->getMessage());
     }
   }
@@ -307,7 +307,7 @@ class WordPressService extends AbstractZonosService
       if (!empty($item->sku)) {
         $productId = wc_get_product_id_by_sku($item->sku);
         if ($productId) {
-          $product = wc_get_product_object($productId);
+          $product = wc_get_product($productId);
         }
       }
 
@@ -315,10 +315,9 @@ class WordPressService extends AbstractZonosService
         $product = wc_get_product((int)$item->productId);
       }
 
-      if (!$product) {
+      if (!$product || !$product->exists()) {
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
-
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
       $total = $subtotal;
@@ -342,9 +341,21 @@ class WordPressService extends AbstractZonosService
           $taxonomy = wc_attribute_taxonomy_name($attribute->key);
           $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
           $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
-          $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
+          $orderItemMetadata = $orderItem->get_meta_data();
+
+          $existingAttribute = array_filter(
+            $orderItemMetadata, function ($meta) use ($taxonomy, $attribute, $attributeName, $attributeValue) {
+            return $meta->key === $taxonomy && $meta->value === $attribute->value ||
+              $meta->key === $attributeName && $meta->value === $attributeValue ||
+              $meta->key === $attribute->key && $meta->value === $attribute->value;
+          }
+          );
+
+          if (empty($existingAttribute)) {
+            $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
+          }
         } catch (\Exception $e) {
-          $this->logger->sendLog('Error processing attributes in order creation: '.$e->getMessage());
+          $this->logger->sendLog('Error processing attributes in order creation: ' . $e->getMessage());
         }
       }
       $orderItem->save();
@@ -462,7 +473,7 @@ class WordPressService extends AbstractZonosService
       $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
       $wooOrder->set_total($convertAmount($newTotal));
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error processing order totals: '.$e->getMessage());
+      $this->logger->sendLog('Error processing order totals: ' . $e->getMessage());
     }
   }
 
@@ -578,9 +589,8 @@ class WordPressService extends AbstractZonosService
         }
         return true;
       }
-
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error updating order tracking numbers: '.$e->getMessage());
+      $this->logger->sendLog('Error updating order tracking numbers: ' . $e->getMessage());
     }
     return false;
   }
@@ -625,4 +635,3 @@ class WordPressService extends AbstractZonosService
     return false;
   }
 }
-
