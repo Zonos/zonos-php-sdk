@@ -3,6 +3,7 @@
 namespace Zonos\ZonosSdk\Utils;
 
 use Zonos\ZonosSdk\Connectors\Logger\DataDogLoggerConnector;
+use Zonos\ZonosSdk\Enums\LogType;
 use Zonos\ZonosSdk\Requests\Logger\DataDogLoggerRequest;
 
 class DataDogLogger
@@ -16,6 +17,7 @@ class DataDogLogger
   public function __construct(
     protected string $credentialToken,
     protected array  $clientHeaders,
+    protected bool   $debugMode = false,
   ) {
   }
 
@@ -23,9 +25,10 @@ class DataDogLogger
    * Sends a log message to the DataDog logging service.
    *
    * @param string $message The log message to be sent.
+   * @param string $type Log type Error | Debug
    * @return void
    */
-  public function sendLog(string $message): void
+  public function sendLog(string $message, LogType $type = LogType::DEBUG): void
   {
     $connector = new DataDogLoggerConnector(
       credentialToken: $this->credentialToken,
@@ -40,6 +43,14 @@ class DataDogLogger
       ]
     );
 
-    $connector->send($request);
+    $showSend = true;
+
+    if ($type == LogType::DEBUG) {
+        $showSend = $this->debugMode;
+    }
+
+    if ($showSend) {
+      $connector->send($request);
+    }
   }
 }
