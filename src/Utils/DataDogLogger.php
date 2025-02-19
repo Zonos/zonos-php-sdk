@@ -30,27 +30,31 @@ class DataDogLogger
    */
   public function sendLog(string $message, LogType $type = LogType::DEBUG): void
   {
-    $connector = new DataDogLoggerConnector(
-      credentialToken: $this->credentialToken,
-      baseUrl:         'https://plugins.zonos.com',
-      clientHeaders:   $this->clientHeaders,
-    );
+    try {
+      $connector = new DataDogLoggerConnector(
+        credentialToken: $this->credentialToken,
+        baseUrl:         'https://plugins.zonos.com',
+        clientHeaders:   $this->clientHeaders,
+      );
 
-    $request = new DataDogLoggerRequest(
-      [
-        "platform" => "WordpressCheckout",
-        "message" => $message,
-      ]
-    );
+      $request = new DataDogLoggerRequest(
+        [
+          "platform" => "WordpressCheckout",
+          "message" => $message,
+        ]
+      );
 
-    $showSend = true;
+      $showSend = true;
 
-    if ($type == LogType::DEBUG) {
-        $showSend = $this->debugMode;
-    }
+      if ($type == LogType::DEBUG) {
+          $showSend = $this->debugMode;
+      }
 
-    if ($showSend) {
-      $connector->send($request);
+      if ($showSend) {
+        $connector->send($request);
+      }
+    } catch (\Exception $e) {
+      error_log('Error sending log to data dog ' . $e->getMessage());
     }
   }
 }

@@ -5,6 +5,7 @@ namespace Zonos\ZonosSdk\Services;
 use http\Exception\RuntimeException;
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
+use Zonos\ZonosSdk\Enums\LogType;
 use Zonos\ZonosSdk\Utils\DataDogLogger;
 
 /**
@@ -63,7 +64,7 @@ class DataMapperService
     $productData = $product->get_data();
     $mapping = $this->config->getMapping('product');
     if (!$mapping) {
-      $this->logger->sendLog('Product mapping configuration is missing');
+      $this->logger->sendLog('Product mapping configuration is missing', LogType::ERROR);
       throw new InvalidArgumentException('Product mapping configuration is missing');
     }
 
@@ -168,7 +169,7 @@ class DataMapperService
           ];
         }
       } catch (\Exception $e) {
-        $this->logger->sendLog('Error mapping attribute ' . $attribute);
+        $this->logger->sendLog('Error mapping attribute ' . $attribute, LogType::ERROR);
       }
     }
 
@@ -217,7 +218,7 @@ class DataMapperService
         default => $productData[$value] ?? $value,
       };
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error parsing map ['.$key.'] with value: '.$value);
+      $this->logger->sendLog('Error parsing map ['.$key.'] with value: '.$value, LogType::ERROR);
     }
     return $result;
   }
