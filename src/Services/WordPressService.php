@@ -13,6 +13,7 @@ use Zonos\ZonosSdk\Data\Checkout\ExchangeRate;
 use Zonos\ZonosSdk\Data\Checkout\Item;
 use Zonos\ZonosSdk\Data\Checkout\Order;
 use Zonos\ZonosSdk\Data\Checkout\Party;
+use Zonos\ZonosSdk\Enums\LogType;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartAdjustmentInput;
 use Zonos\ZonosSdk\Requests\Inputs\Checkout\CartCreateInput;
 use Zonos\ZonosSdk\Data\Checkout\Enums\CartAdjustmentType;
@@ -78,6 +79,7 @@ class WordPressService extends AbstractZonosService
 
         $mappedProduct['metadata'] = [['key' => 'raw_cart_item', 'value' => json_encode($cartItem)]];
 
+        $this->logger->sendLog('Product mapped processed: ' . json_encode($mappedProduct), LogType::DEBUG);
         $items[] = $mappedProduct;
 
         foreach ($appliedCoupons as $couponCode) {
@@ -99,14 +101,16 @@ class WordPressService extends AbstractZonosService
                 type:         $type,
               );
 
+              $this->logger->sendLog('Adjustment mapped processed: ' . json_encode($adjustment), LogType::DEBUG);
+
               $adjustments[] = $adjustment->toArray();
             }
           } catch (\Exception $e) {
-            $this->logger->sendLog('Error processing item coupon in export order: ' . $e->getMessage());
+            $this->logger->sendLog('Error processing item coupon in export order: ' . $e->getMessage(), LogType::ERROR);
           }
         }
       } catch (\Exception $e) {
-        $this->logger->sendLog('Error processing item in export order: ' . $e->getMessage());
+        $this->logger->sendLog('Error processing item in export order: ' . $e->getMessage(), LogType::ERROR);
       }
     }
 
@@ -116,6 +120,8 @@ class WordPressService extends AbstractZonosService
         'items' => $items,
       ]
     );
+
+    $this->logger->sendLog('Input object mapped: ' . json_encode($cartCreateInput), LogType::DEBUG);
 
     $cart = $this->connector->cartCreate($cartCreateInput)?->get('id') ?? null;
 
@@ -185,7 +191,7 @@ class WordPressService extends AbstractZonosService
       if ($wooOrder !== null) {
         $wooOrder->delete(true);
       }
-      $this->logger->sendLog('Error creating order: ' . $e->getMessage());
+      $this->logger->sendLog('Error creating order: ' . $e->getMessage(), LogType::ERROR);
       throw new InvalidArgumentException('Failed to create order: ' . $e->getMessage());
     }
   }
@@ -318,6 +324,7 @@ class WordPressService extends AbstractZonosService
       if (!$product || !$product->exists()) {
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
+      $this->logger->sendLog('Storing Zonos product: ' . json_encode($item) . ' with WC Product: ' . json_encode($product), LogType::DEBUG);
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
       $total = $subtotal;
@@ -355,7 +362,7 @@ class WordPressService extends AbstractZonosService
             $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
           }
         } catch (\Exception $e) {
-          $this->logger->sendLog('Error processing attributes in order creation: ' . $e->getMessage());
+          $this->logger->sendLog('Error processing attributes in order creation: ' . $e->getMessage(), LogType::ERROR);
         }
       }
       $orderItem->save();
@@ -473,7 +480,7 @@ class WordPressService extends AbstractZonosService
       $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
       $wooOrder->set_total($convertAmount($newTotal));
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error processing order totals: ' . $e->getMessage());
+      $this->logger->sendLog('Error processing order totals: ' . $e->getMessage(), LogType::ERROR);
     }
   }
 
@@ -590,7 +597,7 @@ class WordPressService extends AbstractZonosService
         return true;
       }
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error updating order tracking numbers: ' . $e->getMessage());
+      $this->logger->sendLog('Error updating order tracking numbers: ' . $e->getMessage(), LogType::ERROR);
     }
     return false;
   }

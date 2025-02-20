@@ -51,7 +51,8 @@ class ZonosSdk
     string            $baseUrl,
     array             $config = [],
     ZonosPlatformType $platformType = ZonosPlatformType::Default,
-    string            $platformVersion = ''
+    string            $platformVersion = '',
+    bool              $debugMode = false,
   ) {
     $clientHeaders = [
       'x-client-name' => $platformType->value . ' - (zonos-sdk)',
@@ -65,6 +66,7 @@ class ZonosSdk
     $this->logger = new DataDogLogger(
       credentialToken: $credentialToken,
       clientHeaders:   $clientHeaders,
+      debugMode:       $debugMode,
     );
 
     $dataMapperService = new DataMapperService(
