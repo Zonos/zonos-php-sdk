@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
@@ -42,9 +40,9 @@ class WordPressService extends AbstractZonosService
     DataDogLogger     $logger,
   ) {
     parent::__construct(
-      connector: $connector,
+      connector:         $connector,
       dataMapperService: $dataMapperService,
-      logger: $logger,
+      logger:            $logger,
     );
   }
 
@@ -95,12 +93,12 @@ class WordPressService extends AbstractZonosService
               }
 
               $adjustment = new CartAdjustmentInput(
-                amount: $discountApplied,
+                amount:       $discountApplied,
                 currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
-                description: $couponCode,
-                productId: $mappedProduct['productId'] ?? null,
-                sku: $mappedProduct['sku'] ?? null,
-                type: $type,
+                description:  $couponCode,
+                productId:    $mappedProduct['productId'] ?? null,
+                sku:          $mappedProduct['sku'] ?? null,
+                type:         $type,
               );
 
               $this->logger->sendLog('Adjustment mapped processed: ' . json_encode($adjustment), LogType::DEBUG);
