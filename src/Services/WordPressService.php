@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
@@ -40,9 +42,9 @@ class WordPressService extends AbstractZonosService
     DataDogLogger     $logger,
   ) {
     parent::__construct(
-      connector:         $connector,
+      connector: $connector,
       dataMapperService: $dataMapperService,
-      logger:            $logger,
+      logger: $logger,
     );
   }
 
@@ -93,12 +95,12 @@ class WordPressService extends AbstractZonosService
               }
 
               $adjustment = new CartAdjustmentInput(
-                amount:       $discountApplied,
+                amount: $discountApplied,
                 currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
-                description:  $couponCode,
-                productId:    $mappedProduct['productId'] ?? null,
-                sku:          $mappedProduct['sku'] ?? null,
-                type:         $type,
+                description: $couponCode,
+                productId: $mappedProduct['productId'] ?? null,
+                sku: $mappedProduct['sku'] ?? null,
+                type: $type,
               );
 
               $this->logger->sendLog('Adjustment mapped processed: ' . json_encode($adjustment), LogType::DEBUG);
@@ -351,11 +353,12 @@ class WordPressService extends AbstractZonosService
           $orderItemMetadata = $orderItem->get_meta_data();
 
           $existingAttribute = array_filter(
-            $orderItemMetadata, function ($meta) use ($taxonomy, $attribute, $attributeName, $attributeValue) {
-            return $meta->key === $taxonomy && $meta->value === $attribute->value ||
-              $meta->key === $attributeName && $meta->value === $attributeValue ||
-              $meta->key === $attribute->key && $meta->value === $attribute->value;
-          }
+            $orderItemMetadata,
+            function ($meta) use ($taxonomy, $attribute, $attributeName, $attributeValue) {
+              return $meta->key === $taxonomy && $meta->value === $attribute->value ||
+                $meta->key === $attributeName && $meta->value === $attributeValue ||
+                $meta->key === $attribute->key && $meta->value === $attribute->value;
+            }
           );
 
           if (empty($existingAttribute)) {
@@ -468,8 +471,8 @@ class WordPressService extends AbstractZonosService
       $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
 
       $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
-      $this->addFeeIfNeeded($wooOrder, 'Taxes', $orderData->amountSubtotals->taxes, $convertAmount);
-      $this->addFeeIfNeeded($wooOrder, 'Duties', $orderData->amountSubtotals->duties, $convertAmount);
+      $dutiesAndTaxes = (float)$orderData->amountSubtotals->taxes ?? 0 + (float)$orderData->amountSubtotals->duties ?? 0;
+      $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $dutiesAndTaxes, $convertAmount);
       $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
 
       $wooOrder->calculate_totals(false);
