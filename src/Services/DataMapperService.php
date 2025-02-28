@@ -22,7 +22,7 @@ class DataMapperService
    * @param ZonosConfig $config Configuration settings for data mapping
    */
   public function __construct(
-    private readonly ZonosConfig $config,
+    private readonly ZonosConfig   $config,
     private readonly DataDogLogger $logger
   ) {
   }
@@ -124,7 +124,7 @@ class DataMapperService
   /**
    * Map product attributes to Zonos format
    *
-   * @param array<string> $attributes The attribute keys to map
+   * @param array<int, array{type: string, value: string, alias?: string}> $attributes The attribute keys to map
    * @param \WC_Product $product The WooCommerce product
    * @param array<string, mixed> $cart_item The cart item data
    * @return array<int, array<string, string>> The mapped attributes
@@ -135,36 +135,42 @@ class DataMapperService
 
     foreach ($attributes as $attribute) {
       try {
-        $parts = explode('.', $attribute);
-        if (!$parts) {
-          throw new RuntimeException('Error mapping attribute ' . $attribute);
-        }
-        $value = $cart_item;
-        $found = true;
-
-        foreach ($parts as $part) {
-          if (isset($value[$part])) {
-            $value = $value[$part];
-          } else {
-            $value = null;
-            $found = false;
+        $value = null;
+        switch ($attribute['type']) {
+          case 'default_attributes':
+            $variation = $cart_item['variation'] ?? null;
+            $value = $variation ? ($variation['attribute_pa_' . $attribute['value']] ?? ($variation['attribute_' . $attribute['value']] ?? null)) : $product->get_attribute($attribute['value']);
             break;
-          }
+          case 'custom':
+            $parts = explode('.', $attribute['value']);
+
+            if (!$parts) {
+              throw new RuntimeException('Error mapping attribute ' . $attribute);
+            }
+
+            $value = $cart_item;
+            foreach ($parts as $part) {
+              if (isset($value[$part])) {
+                $value = $value[$part];
+              }
+            }
+
+            if (is_array($value) || is_object($value)) {
+              $value = null;
+            } elseif ($value) {
+              $value = (string)$value;
+            }
+            break;
         }
-
-        if (!$found) {
-
-          $variation = $cart_item['variation'] ?? null;
-
-          $value = $variation
-            ? ($variation['attribute_pa_' . $attribute] ?? ($variation['attribute_' . $attribute] ?? null))
-            : $product->get_attribute($attribute);
-        }
-
 
         if ($value) {
+          $key = $attribute['value'];
+          if ($attribute['alias']) {
+            $key = 'Alias: ' . $attribute['alias'];
+          }
+
           $productAttributes[] = [
-            'key' => $attribute,
+            'key' => $key,
             'value' => $value,
           ];
         }
@@ -188,15 +194,15 @@ class DataMapperService
    * @return array<string, mixed> Updated result array
    */
   private function mapByValue(
-    string      $key,
-    string      $value,
-    array       $result,
-    \WC_Product $product,
-    array       $productData,
-    array       $cart_item
+    string       $key,
+    string|array $value,
+    array        $result,
+    \WC_Product  $product,
+    array        $productData,
+    array        $cart_item
   ): array {
     try {
-      if ($value && str_contains($value, '.')) {
+      if ($value && is_string($value) && str_contains($value, '.')) {
         $path = explode('.', $value);
 
         if (!$path) {
@@ -210,7 +216,7 @@ class DataMapperService
       }
 
       $result[$key] = match ($key) {
-        'attributes' => $value ? $this->mapProductAttributes(explode(',', $value), $product, $cart_item) : [],
+        'attributes' => is_array($value) && array_is_list($value) ? $this->mapProductAttributes($value, $product, $cart_item) : [],
         'currencyCode' => $value,
         'amount' => (float)($productData[$value] ?? 0),
         'productId' => (string)($productData[$value] ?? ''),
@@ -218,7 +224,7 @@ class DataMapperService
         default => $productData[$value] ?? $value,
       };
     } catch (\Exception $e) {
-      $this->logger->sendLog('Error parsing map ['.$key.'] with value: '.$value, LogType::ERROR);
+      $this->logger->sendLog('Error parsing map [' . $key . '] with value: ' . $value, LogType::ERROR);
     }
     return $result;
   }

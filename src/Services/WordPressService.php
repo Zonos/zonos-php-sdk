@@ -351,12 +351,17 @@ class WordPressService extends AbstractZonosService
           $orderItemMetadata = $orderItem->get_meta_data();
 
           $existingAttribute = array_filter(
-            $orderItemMetadata, function ($meta) use ($taxonomy, $attribute, $attributeName, $attributeValue) {
-            return $meta->key === $taxonomy && $meta->value === $attribute->value ||
-              $meta->key === $attributeName && $meta->value === $attributeValue ||
-              $meta->key === $attribute->key && $meta->value === $attribute->value;
-          }
+            $orderItemMetadata,
+            function ($meta) use ($taxonomy, $attribute, $attributeName, $attributeValue) {
+              return $meta->key === $taxonomy && $meta->value === $attribute->value ||
+                $meta->key === $attributeName && $meta->value === $attributeValue ||
+                $meta->key === $attribute->key && $meta->value === $attribute->value;
+            }
           );
+
+          if (str_starts_with($attribute->key, 'Alias:')) {
+            $attributeName = str_replace('Alias:', '', $attribute->key);
+          }
 
           if (empty($existingAttribute)) {
             $orderItem->add_meta_data(str_replace('pa_', '', $attributeName), $attributeValue);
