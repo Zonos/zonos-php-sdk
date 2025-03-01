@@ -473,9 +473,8 @@ class WordPressService extends AbstractZonosService
       $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
 
       $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
-      $dutiesAndTaxes = (float)$orderData->amountSubtotals->taxes ?? 0 + (float)$orderData->amountSubtotals->duties ?? 0;
+      $dutiesAndTaxes = ((float)$orderData->amountSubtotals->taxes ?? 0) + ((float)$orderData->amountSubtotals->duties ?? 0) + ((float)$orderData->amountSubtotals->fees ?? 0);
       $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $dutiesAndTaxes, $convertAmount);
-      $this->addFeeIfNeeded($wooOrder, 'Additional Fees', $orderData->amountSubtotals->fees, $convertAmount);
 
       $wooOrder->calculate_totals(false);
 
