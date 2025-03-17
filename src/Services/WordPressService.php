@@ -345,6 +345,11 @@ class WordPressService extends AbstractZonosService
       $orderItem = $wooOrder->get_item($itemId);
       foreach ($item->attributes as $attribute) {
         try {
+          if ($attribute->value == null) {
+            $this->logger->sendLog('Error getting the attribute value: ' . $attribute->name, LogType::ERROR);
+            continue;
+          }
+
           $taxonomy = wc_attribute_taxonomy_name($attribute->key);
           $attributeName = wc_attribute_label($taxonomy) ?? $attribute->key;
           $attributeValue = get_term_by('slug', $attribute->value, $taxonomy)?->name ?? $attribute->value;
