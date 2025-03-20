@@ -1,0 +1,59 @@
+name: Build SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: 'Version tag to create (e.g., v1.2.3)'
+        required: true
+      branch:
+        description: 'Branch to create tag from'
+        required: true
+        default: 'main'
+
+concurrency:
+  group: build-and-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Extract version from input
+        run: echo "VERSION=${{ inputs.tag_version }}" >> $GITHUB_ENV
+
+      - name: Create and push tag
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version in SDK file
+        run: |
+          sed -i "s/define('VERSION', '[0-9]\+\.[0-9]\+\.[0-9]\+');/define('VERSION', '${VERSION#v}');/" src/ZonosSdk.php
+
+      - name: Commit version change
+        run: |
+          git add src/ZonosSdk.php
+          git commit -m "Update version to ${VERSION}"
+          git push origin ${{ inputs.branch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${VERSION}" \
+            --title "Release ${VERSION}" \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
