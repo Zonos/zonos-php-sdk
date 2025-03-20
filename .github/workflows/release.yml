@@ -29,18 +29,10 @@ jobs:
       - name: Extract version from input
         run: echo "VERSION=${{ inputs.tag_version }}" >> $GITHUB_ENV
 
-      - name: Create and push tag
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git tag "${VERSION}"
-          git push origin "${VERSION}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create temporary branch for version update
         run: |
           TEMP_BRANCH="update-version-${VERSION}"
+          echo "TEMP_BRANCH=${TEMP_BRANCH}" >> $GITHUB_ENV
           git checkout -b "$TEMP_BRANCH"
 
       - name: Update version in SDK file
@@ -52,6 +44,13 @@ jobs:
           git add src/ZonosSdk.php
           git commit -m "Update version to ${VERSION}"
           git push origin "$TEMP_BRANCH"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create tag on latest commit
+        run: |
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
