@@ -38,15 +38,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create temporary branch for version update
+        run: |
+          TEMP_BRANCH="update-version-${VERSION}"
+          git checkout -b "$TEMP_BRANCH"
+
       - name: Update version in SDK file
         run: |
           sed -i "s/define('VERSION', '[0-9]\+\.[0-9]\+\.[0-9]\+');/define('VERSION', '${VERSION#v}');/" src/ZonosSdk.php
 
-      - name: Commit version change
+      - name: Commit and push version change
         run: |
           git add src/ZonosSdk.php
           git commit -m "Update version to ${VERSION}"
-          git push origin ${{ inputs.branch }}
+          git push origin "$TEMP_BRANCH"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pull Request
+        run: |
+          gh pr create \
+            --base "${{ inputs.branch }}" \
+            --head "$TEMP_BRANCH" \
+            --title "Update version to ${VERSION}" \
+            --body "This PR updates the version to ${VERSION}."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
