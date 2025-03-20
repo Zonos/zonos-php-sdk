@@ -2,7 +2,7 @@
 
 namespace Zonos\ZonosSdk;
 
-define('VERSION', '0.5.0-beta');
+define('VERSION', '1.0.0');
 
 use InvalidArgumentException;
 use Zonos\ZonosSdk\Config\ZonosConfig;
