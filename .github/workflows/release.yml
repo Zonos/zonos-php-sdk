@@ -47,14 +47,14 @@ jobs:
           git commit -m "Update version to ${VERSION}"
           git push origin "$TEMP_BRANCH"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTION_SECRET }}
 
       - name: Create tag on latest commit
         run: |
           git tag "${VERSION}"
           git push origin "${VERSION}"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTION_SECRET }}
 
       - name: Create Pull Request
         run: |
@@ -64,7 +64,7 @@ jobs:
             --title "Update version to ${VERSION}" \
             --body "This PR updates the version to ${VERSION}."
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTION_SECRET }}
 
       - name: Create GitHub release
         run: |
@@ -72,4 +72,4 @@ jobs:
             --title "Release ${VERSION}" \
             --generate-notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTION_SECRET }}
