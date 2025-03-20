@@ -1,4 +1,4 @@
-name: Build and Release SDK
+name: Build SDK
 
 on:
   workflow_dispatch:
@@ -6,6 +6,14 @@ on:
       tag_version:
         description: 'Version tag to create (e.g., v1.2.3)'
         required: true
+      branch:
+        description: 'Branch to create tag from'
+        required: true
+        default: 'main'
+
+concurrency:
+  group: build-and-release
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -15,6 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.branch }}
           fetch-depth: 0
 
       - name: Extract version from input
@@ -37,7 +46,7 @@ jobs:
         run: |
           git add src/ZonosSdk.php
           git commit -m "Update version to ${VERSION}"
-          git push origin HEAD:main
+          git push origin ${{ inputs.branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
