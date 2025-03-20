@@ -31,9 +31,11 @@ jobs:
 
       - name: Create temporary branch for version update
         run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
           TEMP_BRANCH="update-version-${VERSION}"
-          echo "TEMP_BRANCH=${TEMP_BRANCH}" >> $GITHUB_ENV
           git checkout -b "$TEMP_BRANCH"
+          echo "TEMP_BRANCH=${TEMP_BRANCH}" >> $GITHUB_ENV
 
       - name: Update version in SDK file
         run: |
