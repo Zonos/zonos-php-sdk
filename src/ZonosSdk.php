@@ -55,7 +55,7 @@ class ZonosSdk
     bool              $debugMode = false,
   ) {
     $clientHeaders = [
-      'x-client-name' => $platformType->value . ' - (zonos-sdk)',
+      'x-client-name' => 'woocommerce-checkout',
       'x-client-version' => $platformVersion . ' (sdk:' . VERSION . ')'
     ];
 
