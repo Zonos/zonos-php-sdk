@@ -47,6 +47,10 @@ class ZonosConnector extends Connector
    */
   protected function defaultHeaders(): array
   {
+    if (!$this->credentialToken) {
+      error_log('Trying to make request without the credential token set');
+    }
+
     return array_merge([
       'Accept' => 'application/json',
       'Content-Type' => 'application/json',
