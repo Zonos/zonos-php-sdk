@@ -276,7 +276,7 @@ class DataMapperService
       $dimension,
       $value,
       $result['measurements'],
-      get_option('zonos_length_unit_measure') ?? ''
+      get_option('zonosch_length_unit_measure') ?? ''
     );
     return $result;
   }
@@ -294,7 +294,7 @@ class DataMapperService
       'weight',
       $value,
       $result['measurements'],
-      get_option('zonos_weight_unit_measure') ?? ''
+      get_option('zonosch_weight_unit_measure') ?? ''
     );
     return $result;
   }
