@@ -29,11 +29,10 @@ use Zonos\ZonosSdk\Enums\ZonosPlatformType;
 
 // Initialize the SDK
 $sdk = new ZonosSdk(
-    credential_token: 'your_credential_token',
-    base_url:         'https://api.zonos.com',
-    auth_url:         'https://dgs-auth.dgs.prod.zdops.net',
+    credentialToken: 'your_credential_token',
+    baseUrl:         'https://api.zonos.com',
     config:           [],
-    platform_type:    ZonosPlatformType::Default
+    platformType:    ZonosPlatformType::Default
 );
 
 // Get the utility service instance
@@ -125,9 +124,8 @@ should contain the following options:
 
 ```php
 $sdk = new ZonosSdk(
-    credential_token: 'your_credential_token',
-    base_url:         'https://api.zonos.com',
-    auth_url:         'https://dgs-auth.dgs.prod.zdops.net',
+    credentialToken: 'your_credential_token',
+    baseUrl:         'https://api.zonos.com',
     config:           [
                         'mappings' => [
                             'product' => [
@@ -138,7 +136,7 @@ $sdk = new ZonosSdk(
                             ],
                         ],
                       ],
-    platform_type:    ZonosPlatformType::Default
+    platformType:    ZonosPlatformType::Default
 );
 ```
 
