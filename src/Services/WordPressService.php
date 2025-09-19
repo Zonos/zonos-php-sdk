@@ -164,11 +164,12 @@ class WordPressService extends AbstractZonosService
    *
    * @param Order $orderData The order data from Zonos
    * @param Cart $cartData The cart data from Zonos
+   * @param string $storeCurrencyCode The store currency code
    * @return \WC_Order The created WooCommerce order
    * @throws InvalidArgumentException When order creation fails
    * @throws RuntimeException When WooCommerce is not active
    */
-  public function storeOrder(Order $orderData, Cart $cartData): \WC_Order
+  public function storeOrder(Order $orderData, Cart $cartData, string $storeCurrencyCode): \WC_Order
   {
     if (!function_exists('WC')) {
       throw new RuntimeException('WooCommerce is not active');
@@ -183,7 +184,7 @@ class WordPressService extends AbstractZonosService
       $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
       $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
-      $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments);
+      $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments, $storeCurrencyCode);
       $wooOrder->save();
 
       return $wooOrder;
@@ -439,24 +440,15 @@ class WordPressService extends AbstractZonosService
    *
    * @param \WC_Order $wooOrder The order
    * @param Order $orderData The order data
+   * @param string $storeCurrencyCode The store currency code
    * @param CartAdjustment[] $adjustments The adjustments
    */
-  private function processOrderTotals(\WC_Order $wooOrder, Order $orderData, array $adjustments): void
+  private function processOrderTotals(\WC_Order $wooOrder, Order $orderData, array $adjustments, string $storeCurrencyCode): void
   {
     try {
-      if ($orderData->amountSubtotals === null) {
+      if ($orderData->amountSubtotalsDetails === null) {
         return;
       }
-
-      $exchangeRate = $this->getExchangeRate($orderData);
-      $convertAmount = function (float $amount) use ($exchangeRate): float {
-        if ($exchangeRate !== null) {
-          return round($amount / $exchangeRate->rate, 2);
-        }
-        return $amount;
-      };
-
-      $discountAmount = $convertAmount($orderData->amountSubtotals->discounts);
 
       $discountsByDescription = [];
       foreach ($adjustments as $adjustment) {
@@ -475,47 +467,25 @@ class WordPressService extends AbstractZonosService
         $wooOrder->add_item($coupon);
       }
 
-      $wooOrder->set_currency($exchangeRate ? $exchangeRate->sourceCurrencyCode : $orderData->currencyCode);
+      $wooOrder->set_currency($storeCurrencyCode);
 
-      $this->addShippingIfNeeded($wooOrder, $orderData, $convertAmount);
-      $dutiesAndTaxes = ((float)$orderData->amountSubtotals->taxes ?? 0) + ((float)$orderData->amountSubtotals->duties ?? 0) + ((float)$orderData->amountSubtotals->fees ?? 0);
-      $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $dutiesAndTaxes, $convertAmount);
+      $this->addShippingIfNeeded($wooOrder, $orderData, $storeCurrencyCode);
+      $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $orderData, $storeCurrencyCode);
+      $this->addDiscount($wooOrder, $orderData, $storeCurrencyCode);
 
       $wooOrder->calculate_totals(false);
 
-      $wooOrder->set_discount_total(abs($discountAmount));
-      $wooOrder->set_discount_tax(0);
+      $newTotal = 0;
 
-      $newTotal = $orderData->amountSubtotals->items + $orderData->amountSubtotals->shipping + $orderData->amountSubtotals->duties + $orderData->amountSubtotals->fees + $orderData->amountSubtotals->taxes + $orderData->amountSubtotals->discounts;
-      $wooOrder->set_total($convertAmount($newTotal));
+      array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$newTotal) {
+        if($value->currencyCode === $storeCurrencyCode) {
+          $newTotal += $value->amount;
+        }
+      }, $storeCurrencyCode);
+      $wooOrder->set_total($newTotal);
     } catch (\Exception $e) {
       $this->logger->sendLog('Error processing order totals: ' . $e->getMessage(), LogType::ERROR);
     }
-  }
-
-  /**
-   * Gets exchange rate if needed
-   *
-   * @param Order $orderData The order data
-   * @return ExchangeRate|null The exchange rate object or null
-   */
-  private function getExchangeRate(Order $orderData): ?ExchangeRate
-  {
-    if (
-      $orderData->root === null ||
-      empty($orderData->root->exchangeRates) ||
-      $orderData->currencyCode === reset($orderData->items)->currencyCode ?? ''
-    ) {
-      return null;
-    }
-
-    foreach ($orderData->root->exchangeRates as $rate) {
-      if ($rate->targetCurrencyCode === $orderData->currencyCode) {
-        return $rate;
-      }
-    }
-
-    return null;
   }
 
   /**
@@ -523,19 +493,52 @@ class WordPressService extends AbstractZonosService
    *
    * @param \WC_Order $wooOrder The order
    * @param Order $orderData The order data
-   * @param callable $convertAmount The converter
+   * @param string $storeCurrencyCode Store currency code
    */
-  private function addShippingIfNeeded(\WC_Order $wooOrder, Order $orderData, callable $convertAmount): void
+  private function addDiscount(\WC_Order $wooOrder, Order $orderData, string $storeCurrencyCode): void
   {
-    if ($orderData->amountSubtotals->shipping <= 0) {
+    if ($orderData->amountSubtotalsDetails === null) {
       return;
     }
+
+    $discount = 0;
+
+    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$discount) {
+      if($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
+        $discount += $value->amount;
+      }
+    }, $storeCurrencyCode);
+
+    $wooOrder->set_discount_total(abs($discount));
+    $wooOrder->set_discount_tax(0);
+  }
+
+  /**
+   * Adds shipping to the order if needed
+   *
+   * @param \WC_Order $wooOrder The order
+   * @param Order $orderData The order data
+   * @param string $storeCurrencyCode Store currency code
+   */
+  private function addShippingIfNeeded(\WC_Order $wooOrder, Order $orderData, string $storeCurrencyCode): void
+  {
+    if ($orderData->amountSubtotalsDetails === null) {
+      return;
+    }
+
+    $shippingPrices = 0;
+
+    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$shippingPrices) {
+      if($value->type === 'SHIPPING' && $value->currencyCode === $storeCurrencyCode) {
+        $shippingPrices += $value->amount;
+      }
+    }, $storeCurrencyCode);
 
     $shippingMethod = !empty($orderData->shipmentRatings) ? $orderData->shipmentRatings[0] : null;
     $shippingItem = new \WC_Order_Item_Shipping();
     $shippingItem->set_method_title($shippingMethod?->displayName ?? 'Shipping');
     $shippingItem->set_method_id($shippingMethod?->serviceLevelCode ?? 'default');
-    $shippingItem->set_total($convertAmount($orderData->amountSubtotals->shipping));
+    $shippingItem->set_total($shippingPrices);
     $wooOrder->add_item($shippingItem);
   }
 
@@ -544,19 +547,27 @@ class WordPressService extends AbstractZonosService
    *
    * @param \WC_Order $wooOrder The order
    * @param string $name The name
-   * @param float $amount The amount
-   * @param callable $convertAmount The amount converter function
+   * @param Order $orderData The order data
+   * @param string $storeCurrencyCode Store currency code
    */
-  private function addFeeIfNeeded(\WC_Order $wooOrder, string $name, float $amount, callable $convertAmount): void
+  private function addFeeIfNeeded(\WC_Order $wooOrder, string $name, Order $orderData, string $storeCurrencyCode): void
   {
-    if ($amount <= 0) {
+    if ($orderData->amountSubtotalsDetails === null) {
       return;
     }
 
+    $feePrices = 0;
+
+    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$feePrices) {
+      if(($value->type === 'FEE' || $value->type === 'DUTY' || $value->type === 'TAX') && $value->currencyCode === $storeCurrencyCode) {
+        $feePrices += $value->amount;
+      }
+    }, $storeCurrencyCode);
+
     $fee = new \WC_Order_Item_Fee();
     $fee->set_name($name);
-    $fee->set_amount($convertAmount($amount));
-    $fee->set_total($convertAmount($amount));
+    $fee->set_amount($feePrices);
+    $fee->set_total($feePrices);
     $fee->set_tax_status('none');
     $wooOrder->add_item($fee);
   }
