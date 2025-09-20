@@ -8,22 +8,24 @@ class Order
 {
 
   public function __construct(
-    public string           $accountOrderNumber,
-    public ?AmountSubtotals $amountSubtotals,
-    public ?CheckoutSession $checkoutSession,
-    public string           $currencyCode,
-    public string           $id,
+    public string                   $accountOrderNumber,
+    public ?AmountSubtotals         $amountSubtotals,
+    /** @var AmountSubtotalsDetails[] $amountSubtotalsDetails */
+    public array                    $amountSubtotalsDetails,
+    public ?CheckoutSession         $checkoutSession,
+    public string                   $currencyCode,
+    public string                   $id,
     /** @var Item[] $items */
-    public array            $items,
+    public array                    $items,
     /** @var Party[] $parties */
-    public array            $parties,
-    public ?Root            $root,
+    public array                    $parties,
+    public ?Root                    $root,
     /** @var ShipmentRating[] $shipmentRatings */
-    public array            $shipmentRatings,
-    public OrderStatus      $status,
+    public array                    $shipmentRatings,
+    public OrderStatus              $status,
     /** @var Shipment[] $shipments */
-    public array            $shipments,
-    public ?string          $zonosOrderId,
+    public array                    $shipments,
+    public ?string                  $zonosOrderId,
   ) {
   }
 
@@ -33,6 +35,7 @@ class Order
     return [
       'accountOrderNumber' => $this->accountOrderNumber,
       'amountSubtotals' => $this->amountSubtotals?->toArray(),
+      'amountSubtotalsDetails' => array_map(fn(AmountSubtotalsDetails $amountSubtotalsDetails) => $amountSubtotalsDetails->toArray(), $this->amountSubtotalsDetails),
       'checkoutSession' => $this->checkoutSession?->toArray(),
       'currencyCode' => $this->currencyCode,
       'id' => $this->id,
@@ -49,30 +52,34 @@ class Order
   public static function fromArray(array $data): self
   {
     return new self(
-      accountOrderNumber: $data['accountOrderNumber'] ?? '',
-      amountSubtotals:    isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
-      checkoutSession:    isset($data['checkoutSession']) ? CheckoutSession::fromArray($data['checkoutSession']) : null,
-      currencyCode:       $data['currencyCode'] ?? '',
-      id:                 $data['id'] ?? '',
-      items:              array_map(
-                            fn(array $item) => Item::fromArray($item),
+      accountOrderNumber:     $data['accountOrderNumber'] ?? '',
+      amountSubtotals:        isset($data['amountSubtotals']) ? AmountSubtotals::fromArray($data['amountSubtotals']) : null,
+      amountSubtotalsDetails: array_map(
+                                fn(array $amountSubtotalsDetails) => AmountSubtotalsDetails::fromArray($amountSubtotalsDetails),
+                            $data['amountSubtotalsDetails'] ?? []
+                              ) ?? [],
+      checkoutSession:        isset($data['checkoutSession']) ? CheckoutSession::fromArray($data['checkoutSession']) : null,
+      currencyCode:           $data['currencyCode'] ?? '',
+      id:                     $data['id'] ?? '',
+      items:                  array_map(
+                                fn(array $item) => Item::fromArray($item),
                             $data['items'] ?? []
-                          ) ?? [],
-      parties:            array_map(
-                            fn(array $party) => Party::fromArray($party),
+                              ) ?? [],
+      parties:                array_map(
+                                fn(array $party) => Party::fromArray($party),
                             $data['parties'] ?? []
-                          ) ?? [],
-      root:               isset($data['root']) ? Root::fromArray($data['root']) : null,
-      shipmentRatings:    array_map(
-                            fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
+                              ) ?? [],
+      root:                   isset($data['root']) ? Root::fromArray($data['root']) : null,
+      shipmentRatings:        array_map(
+                                fn(array $shipmentRating) => ShipmentRating::fromArray($shipmentRating),
                             $data['shipmentRatings'] ?? []
-                          ) ?? [],
-      status:             OrderStatus::from($data['status'] ?? OrderStatus::OPEN->value),
-      shipments:          array_map(
-                            fn(array $shipment) => Shipment::fromArray($shipment),
-                            $data['shipments'] ?? []
-                          ) ?? [],
-      zonosOrderId:       $data['zonosOrderId'] ?? null,
+                              ) ?? [],
+      status:                 OrderStatus::from($data['status'] ?? OrderStatus::OPEN->value),
+      shipments:              array_map(
+                                fn(array $shipment) => Shipment::fromArray($shipment),
+                                $data['shipments'] ?? []
+                              ) ?? [],
+      zonosOrderId:           $data['zonosOrderId'] ?? null,
     );
   }
 }

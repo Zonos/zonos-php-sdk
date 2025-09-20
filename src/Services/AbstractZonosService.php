@@ -35,9 +35,10 @@ abstract class AbstractZonosService
    *
    * @param Order $orderData The Zonos order data to store
    * @param Cart $cartData The Zonos cart data to store
+   * @param string $storeCurrencyCode The store currency code
    * @return mixed The created order in the platform's format
    */
-  abstract public function storeOrder(Order $orderData, Cart $cartData): mixed;
+  abstract public function storeOrder(Order $orderData, Cart $cartData, string $storeCurrencyCode): mixed;
 
 
   /**
