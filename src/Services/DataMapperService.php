@@ -234,7 +234,7 @@ class DataMapperService
     $price = 0;
     switch ($value) {
       case 'plugin_wapf':
-        if (isset($cart_item['wapf']) || is_array($cart_item['wapf'])) {
+        if (isset($cart_item['wapf']) && is_array($cart_item['wapf'])) {
           foreach ($cart_item['wapf'] as $extra_item) {
             $price_item_list = $extra_item['price'];
             if (isset($price_item_list) && is_array($price_item_list)) {
