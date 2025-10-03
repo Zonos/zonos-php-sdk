@@ -237,7 +237,7 @@ class DataMapperService
         if (isset($cart_item['wapf']) || is_array($cart_item['wapf'])) {
           foreach ($cart_item['wapf'] as $extra_item) {
             $price_item_list = $extra_item['price'];
-            if (isset($price_item_list) || is_array($price_item_list)) {
+            if (isset($price_item_list) && is_array($price_item_list)) {
               foreach($price_item_list as $price_item) {
                 $price += (float)($price_item['value'] ?? 0);
               }
