@@ -218,7 +218,7 @@ class DataMapperService
       $result[$key] = match ($key) {
         'attributes' => is_array($value) && array_is_list($value) ? $this->mapProductAttributes($value, $product, $cart_item) : [],
         'currencyCode' => $value,
-        'amount' => (float)($productData[$value] ?? 0),
+        'amount' => $this->mapAmount($productData, $value, $cart_item),
         'productId' => (string)($productData[$value] ?? ''),
         'hsCode' => $productData[$value] ?? '',
         default => $productData[$value] ?? $value,
@@ -227,6 +227,28 @@ class DataMapperService
       $this->logger->sendLog('Error parsing map [' . $key . '] with value: ' . $value, LogType::ERROR);
     }
     return $result;
+  }
+
+  private function mapAmount(array $productData, string $value, array $cart_item): float
+  {
+    $price = 0;
+    switch ($value) {
+      case 'plugin_wapf':
+        if (isset($cart_item['wapf']) || is_array($cart_item['wapf'])) {
+          foreach ($cart_item['wapf'] as $extra_item) {
+            $price_item_list = $extra_item['price'];
+            if (isset($price_item_list) || is_array($price_item_list)) {
+              foreach($price_item_list as $price_item) {
+                $price += (float)($price_item['value'] ?? 0);
+              }
+            }
+          }
+        }
+
+        return $price + (float)($productData['price'] ?? 0);
+    }
+
+    return (float)($productData[$value] ?? 0);
   }
 
   /**
