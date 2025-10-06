@@ -90,7 +90,7 @@ class ItemInput
       name:                    $data['name'] ?? null,
       productId:               $data['productId'] ?? null,
       provinceOfOrigin:        $data['provinceOfOrigin'] ?? null,
-      quantity:                $data['quantity'] ?? 0,
+      quantity:                isset($data['quantity']) ? (int)preg_replace('/\D/', '', (string)$data['quantity']) : 0,
       referenceId:             $data['referenceId'] ?? null,
       rootId:                  $data['rootId'] ?? null,
       sku:                     $data['sku'] ?? null,
