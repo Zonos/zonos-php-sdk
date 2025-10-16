@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Requests\Inputs\Checkout;
 
@@ -35,8 +37,7 @@ class ItemInput
     public ?string                  $referenceId,
     public ?string                  $rootId,
     public ?string                  $sku,
-  ) {
-  }
+  ) {}
 
   public function toArray(): array
   {
@@ -65,35 +66,84 @@ class ItemInput
 
   public static function fromArray(array $data): self
   {
-    return new self(
-      amount:                  $data['amount'] ?? 0,
-      attributes:              isset($data['attributes']) ? array_map(
-                                 fn($item) => ItemAttributeInput::fromArray($item),
-                                 $data['attributes']
-                               ) : null,
-      countryOfOrigin:         isset($data['countryOfOrigin']) ? CountryCode::from($data['countryOfOrigin']) : null,
-      currencyCode:            CurrencyCode::from($data['currencyCode']),
-      description:             $data['description'] ?? null,
-      dutyTaxFeeConfiguration: isset($data['dutyTaxFeeConfiguration']) ? DutyTaxFeeConfiguration::from($data['dutyTaxFeeConfiguration']) : null,
-      hsCode:                  $data['hsCode'] ?? null,
-      hsCodeSource:            isset($data['hsCodeSource']) ? ItemValueSource::from($data['hsCodeSource']) : null,
-      imageUrl:                $data['imageUrl'] ?? null,
-      itemType:                isset($data['itemType']) ? ItemType::from($data['itemType']) : null,
-      measurements:            isset($data['measurements']) ? array_map(
-                                 fn($item) => ItemMeasurementInput::fromArray($item),
-                                 $data['measurements']
-                               ) : null,
-      metadata:                isset($data['metadata']) ? array_map(
-                                 fn($item) => ItemMetadataInput::fromArray($item),
-                                 $data['metadata']
-                               ) : null,
-      name:                    $data['name'] ?? null,
-      productId:               $data['productId'] ?? null,
-      provinceOfOrigin:        $data['provinceOfOrigin'] ?? null,
-      quantity:                isset($data['quantity']) ? (int)preg_replace('/\D/', '', (string)$data['quantity']) : 0,
-      referenceId:             $data['referenceId'] ?? null,
-      rootId:                  $data['rootId'] ?? null,
-      sku:                     $data['sku'] ?? null,
-    );
+    try {
+      $measurements = null;
+      if (isset($data['measurements'])) {
+        $measurements = array_map(
+          function ($item) {
+            try {
+              return ItemMeasurementInput::fromArray($item);
+            } catch (\Exception $e) {
+              throw new \RuntimeException('Error processing measurement: ' . json_encode($item) . ' - ' . $e->getMessage(), 0, $e);
+            }
+          },
+          $data['measurements']
+        );
+      }
+
+      $attributes = null;
+      if (isset($data['attributes'])) {
+        $attributes = array_map(
+          function ($item) {
+            try {
+              return ItemAttributeInput::fromArray($item);
+            } catch (\Exception $e) {
+              throw new \RuntimeException('Error processing attribute: ' . json_encode($item) . ' - ' . $e->getMessage(), 0, $e);
+            }
+          },
+          $data['attributes']
+        );
+      }
+
+      $metadata = null;
+      if (isset($data['metadata'])) {
+        $metadata = array_map(
+          function ($item) {
+            try {
+              return ItemMetadataInput::fromArray($item);
+            } catch (\Exception $e) {
+              throw new \RuntimeException('Error processing metadata: ' . json_encode($item) . ' - ' . $e->getMessage(), 0, $e);
+            }
+          },
+          $data['metadata']
+        );
+      }
+
+      if (!isset($data['currencyCode'])) {
+        throw new \RuntimeException('Missing required field: currencyCode');
+      }
+
+      try {
+        $currencyCode = CurrencyCode::from($data['currencyCode']);
+      } catch (\ValueError $e) {
+        throw new \RuntimeException('Invalid CurrencyCode: "' . $data['currencyCode'] . '". This currency code is not supported.');
+      } catch (\Exception $e) {
+        throw new \RuntimeException('Error creating CurrencyCode from: "' . $data['currencyCode'] . '" - ' . $e->getMessage(), 0, $e);
+      }
+
+      return new self(
+        amount: $data['amount'] ?? 0,
+        attributes: $attributes,
+        countryOfOrigin: isset($data['countryOfOrigin']) ? CountryCode::from($data['countryOfOrigin']) : null,
+        currencyCode: $currencyCode,
+        description: $data['description'] ?? null,
+        dutyTaxFeeConfiguration: isset($data['dutyTaxFeeConfiguration']) ? DutyTaxFeeConfiguration::from($data['dutyTaxFeeConfiguration']) : null,
+        hsCode: $data['hsCode'] ?? null,
+        hsCodeSource: isset($data['hsCodeSource']) ? ItemValueSource::from($data['hsCodeSource']) : null,
+        imageUrl: $data['imageUrl'] ?? null,
+        itemType: isset($data['itemType']) ? ItemType::from($data['itemType']) : null,
+        measurements: $measurements,
+        metadata: $metadata,
+        name: $data['name'] ?? null,
+        productId: $data['productId'] ?? null,
+        provinceOfOrigin: $data['provinceOfOrigin'] ?? null,
+        quantity: isset($data['quantity']) ? (int)preg_replace('/\D/', '', (string)$data['quantity']) : 0,
+        referenceId: $data['referenceId'] ?? null,
+        rootId: $data['rootId'] ?? null,
+        sku: $data['sku'] ?? null,
+      );
+    } catch (\Exception $e) {
+      throw new \RuntimeException('Error in ItemInput::fromArray with data: ' . json_encode($data) . ' - ' . $e->getMessage(), 0, $e);
+    }
   }
 }
