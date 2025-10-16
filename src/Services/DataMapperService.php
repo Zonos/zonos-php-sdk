@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
@@ -24,8 +26,7 @@ class DataMapperService
   public function __construct(
     private readonly ZonosConfig   $config,
     private readonly DataDogLogger $logger
-  ) {
-  }
+  ) {}
 
   /**
    * Map data according to configured entity mappings
@@ -235,11 +236,10 @@ class DataMapperService
     switch ($value) {
       case 'plugin_wapf':
         if (isset($cart_item['wapf']) && is_array($cart_item['wapf'])) {
-          foreach ($cart_item['wapf'] as $extra_item) {
-            $price_item_list = $extra_item['price'];
-            if (isset($price_item_list) && is_array($price_item_list)) {
-              foreach($price_item_list as $price_item) {
-                $price += (float)($price_item['value'] ?? 0);
+          foreach ($cart_item['wapf'] as $wapf_field) {
+            if (isset($wapf_field['values']) && is_array($wapf_field['values'])) {
+              foreach ($wapf_field['values'] as $value_option) {
+                $price += (float)($value_option['price'] ?? 0);
               }
             }
           }
