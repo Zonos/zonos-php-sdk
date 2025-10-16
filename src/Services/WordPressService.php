@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Zonos\ZonosSdk\Services;
 
@@ -40,9 +42,9 @@ class WordPressService extends AbstractZonosService
     DataDogLogger     $logger,
   ) {
     parent::__construct(
-      connector:         $connector,
+      connector: $connector,
       dataMapperService: $dataMapperService,
-      logger:            $logger,
+      logger: $logger,
     );
   }
 
@@ -93,12 +95,12 @@ class WordPressService extends AbstractZonosService
               }
 
               $adjustment = new CartAdjustmentInput(
-                amount:       $discountApplied,
+                amount: $discountApplied,
                 currencyCode: CurrencyCode::from($mappedProduct['currencyCode']),
-                description:  $couponCode,
-                productId:    $mappedProduct['productId'] ?? null,
-                sku:          $mappedProduct['sku'] ?? null,
-                type:         $type,
+                description: $couponCode,
+                productId: $mappedProduct['productId'] ?? null,
+                sku: $mappedProduct['sku'] ?? null,
+                type: $type,
               );
 
               $this->logger->sendLog('Adjustment mapped processed: ' . json_encode($adjustment), LogType::DEBUG);
@@ -114,22 +116,32 @@ class WordPressService extends AbstractZonosService
       }
     }
 
-    $cartCreateInput = CartCreateInput::fromArray(
-      [
-        'adjustments' => $adjustments,
-        'items' => $items,
-      ]
-    );
+    try {
+      $cartCreateInput = CartCreateInput::fromArray(
+        [
+          'adjustments' => $adjustments,
+          'items' => $items,
+        ]
+      );
 
-    $this->logger->sendLog('Input object mapped: ' . json_encode($cartCreateInput), LogType::DEBUG);
-
-    $cart = $this->connector->cartCreate($cartCreateInput)?->get('id') ?? null;
-
-    if ($cart === null) {
-      throw new InvalidArgumentException('Failed to create cart');
+      $this->logger->sendLog('Input object mapped: ' . json_encode($cartCreateInput), LogType::DEBUG);
+    } catch (\Exception $e) {
+      $this->logger->sendLog('Error creating CartCreateInput: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString(), LogType::ERROR);
+      throw $e;
     }
 
-    return $cart->id;
+    try {
+      $cart = $this->connector->cartCreate($cartCreateInput)?->get('id') ?? null;
+
+      if ($cart === null) {
+        throw new InvalidArgumentException('Failed to create cart');
+      }
+
+      return $cart->id;
+    } catch (\Exception $e) {
+      $this->logger->sendLog('Error creating cart: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString(), LogType::ERROR);
+      throw $e;
+    }
   }
 
   /**
@@ -477,8 +489,8 @@ class WordPressService extends AbstractZonosService
 
       $newTotal = 0;
 
-      array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$newTotal) {
-        if($value->currencyCode === $storeCurrencyCode) {
+      array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$newTotal) {
+        if ($value->currencyCode === $storeCurrencyCode) {
           $newTotal += $value->amount;
         }
       }, $storeCurrencyCode);
@@ -503,8 +515,8 @@ class WordPressService extends AbstractZonosService
 
     $discount = 0;
 
-    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$discount) {
-      if($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
+    array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$discount) {
+      if ($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
         $discount += $value->amount;
       }
     }, $storeCurrencyCode);
@@ -528,8 +540,8 @@ class WordPressService extends AbstractZonosService
 
     $shippingPrices = 0;
 
-    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$shippingPrices) {
-      if($value->type === 'SHIPPING' && $value->currencyCode === $storeCurrencyCode) {
+    array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$shippingPrices) {
+      if ($value->type === 'SHIPPING' && $value->currencyCode === $storeCurrencyCode) {
         $shippingPrices += $value->amount;
       }
     }, $storeCurrencyCode);
@@ -558,8 +570,8 @@ class WordPressService extends AbstractZonosService
 
     $feePrices = 0;
 
-    array_walk($orderData->amountSubtotalsDetails, function($value, $key, $storeCurrencyCode) use (&$feePrices) {
-      if(($value->type === 'FEE' || $value->type === 'DUTY' || $value->type === 'TAX') && $value->currencyCode === $storeCurrencyCode) {
+    array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$feePrices) {
+      if (($value->type === 'FEE' || $value->type === 'DUTY' || $value->type === 'TAX') && $value->currencyCode === $storeCurrencyCode) {
         $feePrices += $value->amount;
       }
     }, $storeCurrencyCode);
