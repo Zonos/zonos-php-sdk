@@ -742,7 +742,7 @@ class WordPressService extends AbstractZonosService
     if ($currentStatus !== $newWcStatus) {
       $wooOrder->set_status($newWcStatus, '', true);
 
-      if ($newWcStatus === 'wc-cancelled' || $newWcStatus === 'wc-failed') {
+      if ($newWcStatus === 'wc-cancelled') {
         foreach ($wooOrder->get_items() as $item) {
           $product = $item->get_product();
           if ($product && $product->managing_stock()) {
