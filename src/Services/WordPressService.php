@@ -446,7 +446,7 @@ class WordPressService extends AbstractZonosService
         $product = $change['product'];
         $quantity = $change['quantity'];
         $previousStatus = $change['previous_status'];
-        $currentStock = $product->get_stock_quantity();
+        $currentStock = $product->get_stock_quantity() !== null ? $product->get_stock_quantity() : 0;
 
         if ($product && $product->managing_stock()) {
           $product->set_stock_quantity($currentStock + $quantity);
@@ -746,7 +746,7 @@ class WordPressService extends AbstractZonosService
         foreach ($wooOrder->get_items() as $item) {
           $product = $item->get_product();
           if ($product && $product->managing_stock()) {
-            $currentStock = $product->get_stock_quantity();
+            $currentStock = $product->get_stock_quantity() !== null ? $product->get_stock_quantity() : 0;
             $product->set_stock_quantity($currentStock + $item->get_quantity());
             $product->save();
             $this->logger->sendLog("Stock restored for product {$product->get_sku()}: quantity {$item->get_quantity()}", LogType::DEBUG);
