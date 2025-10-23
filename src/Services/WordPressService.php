@@ -347,8 +347,8 @@ class WordPressService extends AbstractZonosService
 
       try {
         if ($product->managing_stock()) {
-          $currentStock = $product->get_stock_quantity();
-          if ($currentStock !== null && $currentStock < $item->quantity) {
+          $currentStock = $product->get_stock_quantity() != null ? $product->get_stock_quantity() : 0;
+          if ($currentStock < $item->quantity) {
             $this->logger->sendLog("Insufficient stock for product {$item->sku}: requested {$item->quantity}, available {$currentStock}", LogType::ERROR);
           }
 
