@@ -359,9 +359,10 @@ class WordPressService extends AbstractZonosService
 
           if ($newStock !== null && $newStock <= 0) {
             $product->set_stock_status('outofstock');
-            $product->save();
             $this->logger->sendLog("Product {$item->sku} marked as out of stock", LogType::DEBUG);
           }
+
+          $product->save();
 
           $stockChanges[] = [
             'product' => $product,
