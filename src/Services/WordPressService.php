@@ -453,8 +453,9 @@ class WordPressService extends AbstractZonosService
 
           if ($previousStatus !== 'outofstock' && $product->get_stock_status() === 'outofstock') {
             $product->set_stock_status($previousStatus);
-            $product->save();
           }
+
+          $product->save();
 
           $this->logger->sendLog("Stock rollback completed for product: quantity {$quantity} restored", LogType::DEBUG);
         }
