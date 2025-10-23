@@ -191,10 +191,11 @@ class WordPressService extends AbstractZonosService
 
     /** @var \WC_Order|null $wooOrder */
     $wooOrder = null;
+    $stockChanges = [];
 
     try {
       $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
-      $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
+      $stockChanges = $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
       $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments, $storeCurrencyCode);
       $wooOrder->save();
@@ -204,6 +205,9 @@ class WordPressService extends AbstractZonosService
       if ($wooOrder !== null) {
         $wooOrder->delete(true);
       }
+
+      $this->rollbackStockChanges($stockChanges);
+
       $this->logger->sendLog('Error creating order: ' . $e->getMessage(), LogType::ERROR);
       throw new InvalidArgumentException('Failed to create order: ' . $e->getMessage());
     }
@@ -316,10 +320,12 @@ class WordPressService extends AbstractZonosService
    * @param \WC_Order $wooOrder The order
    * @param Item[] $items The items/products to add
    * @param CartAdjustment[] $adjustments The adjustments to add
+   * @return array Array of stock changes for rollback purposes
    * @throws InvalidArgumentException If the product is not found
    */
-  private function addOrderItems(\WC_Order $wooOrder, array $items, array $adjustments): void
+  private function addOrderItems(\WC_Order $wooOrder, array $items, array $adjustments): array
   {
+    $stockChanges = [];
     foreach ($items as $item) {
       $product = null;
 
@@ -338,6 +344,40 @@ class WordPressService extends AbstractZonosService
         throw new InvalidArgumentException("Product not found by SKU: {$item->sku} or ID: {$item->productId}");
       }
       $this->logger->sendLog('Storing Zonos product: ' . json_encode($item) . ' with WC Product: ' . json_encode($product), LogType::DEBUG);
+
+      try {
+        if ($product->managing_stock()) {
+          $currentStock = $product->get_stock_quantity() != null ? $product->get_stock_quantity() : 0;
+          if ($currentStock < $item->quantity) {
+            $this->logger->sendLog("Insufficient stock for product {$item->sku}: requested {$item->quantity}, available {$currentStock}", LogType::ERROR);
+          }
+
+          $previousStockStatus = $product->get_stock_status();
+          $product->set_stock_quantity($currentStock - $item->quantity);
+
+          $newStock = $product->get_stock_quantity();
+
+          if ($newStock !== null && $newStock <= 0) {
+            $product->set_stock_status('outofstock');
+            $this->logger->sendLog("Product {$item->sku} marked as out of stock", LogType::DEBUG);
+          }
+
+          $product->save();
+
+          $stockChanges[] = [
+            'product' => $product,
+            'quantity' => $item->quantity,
+            'previous_status' => $previousStockStatus,
+          ];
+
+          $this->logger->sendLog("Stock decreased for product {$item->sku}: quantity {$item->quantity}", LogType::DEBUG);
+        } else {
+          $this->logger->sendLog("Stock management not enabled for product {$item->sku}", LogType::DEBUG);
+        }
+      } catch (\Exception $e) {
+        $this->logger->sendLog("Error decreasing stock for product {$item->sku}: " . $e->getMessage(), LogType::ERROR);
+        throw new InvalidArgumentException("Failed to decrease stock for product {$item->sku}: " . $e->getMessage());
+      }
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
       $total = $subtotal;
@@ -389,6 +429,39 @@ class WordPressService extends AbstractZonosService
         }
       }
       $orderItem->save();
+    }
+
+    return $stockChanges;
+  }
+
+  /**
+   * Rollback stock changes when order creation fails
+   *
+   * @param array $stockChanges Array of stock changes to rollback
+   */
+  private function rollbackStockChanges(array $stockChanges): void
+  {
+    foreach ($stockChanges as $change) {
+      try {
+        $product = $change['product'];
+        $quantity = $change['quantity'];
+        $previousStatus = $change['previous_status'];
+        $currentStock = $product->get_stock_quantity() !== null ? $product->get_stock_quantity() : 0;
+
+        if ($product && $product->managing_stock()) {
+          $product->set_stock_quantity($currentStock + $quantity);
+
+          if ($previousStatus !== 'outofstock' && $product->get_stock_status() === 'outofstock') {
+            $product->set_stock_status($previousStatus);
+          }
+
+          $product->save();
+
+          $this->logger->sendLog("Stock rollback completed for product: quantity {$quantity} restored", LogType::DEBUG);
+        }
+      } catch (\Exception $e) {
+        $this->logger->sendLog("Error rolling back stock: " . $e->getMessage(), LogType::ERROR);
+      }
     }
   }
 
@@ -668,6 +741,19 @@ class WordPressService extends AbstractZonosService
 
     if ($currentStatus !== $newWcStatus) {
       $wooOrder->set_status($newWcStatus, '', true);
+
+      if ($newWcStatus === 'wc-cancelled') {
+        foreach ($wooOrder->get_items() as $item) {
+          $product = $item->get_product();
+          if ($product && $product->managing_stock()) {
+            $currentStock = $product->get_stock_quantity() !== null ? $product->get_stock_quantity() : 0;
+            $product->set_stock_quantity($currentStock + $item->get_quantity());
+            $product->save();
+            $this->logger->sendLog("Stock restored for product {$product->get_sku()}: quantity {$item->get_quantity()}", LogType::DEBUG);
+          }
+        }
+
+      }
       return true;
     }
 
