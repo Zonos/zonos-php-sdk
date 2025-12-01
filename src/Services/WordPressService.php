@@ -752,7 +752,6 @@ class WordPressService extends AbstractZonosService
             $this->logger->sendLog("Stock restored for product {$product->get_sku()}: quantity {$item->get_quantity()}", LogType::DEBUG);
           }
         }
-
       }
       return true;
     }
