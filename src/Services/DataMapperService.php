@@ -82,7 +82,7 @@ class DataMapperService
       $result = match ($value) {
         'quantity' => $this->mapQuantity($result, $key, $cart_item),
         'image_id' => $this->mapImage($result, $key, (int)$product->get_image_id() ?? null),
-        'length', 'width', 'height' => $this->mapDimension($result, $value, (float)$productData[$value] ?? null),
+        'length', 'width', 'height' => $this->mapDimension($result, $value, $cart_item, $productData),
         'weight' => $this->mapWeight($result, (float)$productData[$value] ?? null),
         default => $this->mapByValue($key, $value, $result, $product, $productData, $cart_item),
       };
@@ -289,14 +289,24 @@ class DataMapperService
    *
    * @param array<string, mixed> $result Current result array
    * @param string $dimension Dimension type (length, width, height)
-   * @param float|null $value Dimension value
+   * @param array<string, mixed> $cart_item Cart item data
+   * @param array<string, mixed> $productData Product data
    * @return array<string, mixed> Updated result array
    */
-  private function mapDimension(array $result, string $dimension, ?float $value): array
+  private function mapDimension(array $result, string $dimension, array $cart_item, array $productData): array
   {
+
+    error_log("Product data: " . json_encode($productData));
+    $value = $productData[$dimension] ?? null;
+    if ($value === null || $value === '') {
+      $parentProductData = wc_get_product($cart_item['product_id'])->get_data();
+      error_log("Parent product data: " . json_encode($parentProductData));
+      $value = $parentProductData[$dimension] ?? null;
+    }
+
     $result['measurements'] = $this->mapMeasurement(
       $dimension,
-      $value,
+      (float) $value,
       $result['measurements'],
       get_option('zonosch_length_unit_measure') ?? ''
     );
