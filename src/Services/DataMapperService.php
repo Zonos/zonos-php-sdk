@@ -296,11 +296,9 @@ class DataMapperService
   private function mapDimension(array $result, string $dimension, array $cart_item, array $productData): array
   {
 
-    error_log("Product data: " . json_encode($productData));
     $value = $productData[$dimension] ?? null;
     if ($value === null || $value === '') {
       $parentProductData = wc_get_product($cart_item['product_id'])->get_data();
-      error_log("Parent product data: " . json_encode($parentProductData));
       $value = $parentProductData[$dimension] ?? null;
     }
 
