@@ -1,0 +1,25 @@
+apiVersion: v3
+kind: service
+metadata:
+  name: zonos-php-sdk
+  owner: team-08-plugins
+  description: >-
+    PHP SDK for integrating with Zonos services, providing access
+    to the Zonos GraphQL API.
+  tags:
+    - language:php
+    - cloud_provider:aws
+  contacts:
+    - name: Team 08 - Plugins
+      type: slack
+      contact: https://zonos.slack.com/archives/C09NR9ZGQDR
+  links:
+    - name: Source Code
+      type: repo
+      url: https://github.com/Zonos/zonos-php-sdk
+      provider: github
+spec:
+  lifecycle: production
+  tier: "silver"
+  languages:
+    - php
