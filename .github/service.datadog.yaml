@@ -2,7 +2,7 @@ apiVersion: v3
 kind: service
 metadata:
   name: zonos-php-sdk
-  owner: team-08-plugins
+  owner: team-08
   description: >-
     PHP SDK for integrating with Zonos services, providing access
     to the Zonos GraphQL API.
