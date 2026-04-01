@@ -73,9 +73,13 @@ class WordPressService extends AbstractZonosService
 
     foreach ($cart->get_cart() as $cartItem) {
       try {
-        $product = wc_get_product($cartItem['product_id']);
-        if (!empty($cartItem['variation_id'])) {
-          $product = wc_get_product($cartItem['variation_id']);
+        // Use the cart item's product object ($cartItem['data']) which reflects
+        // prices modified by third-party plugins (e.g., YITH Dynamic Pricing,
+        // B2B price rules) via woocommerce_before_calculate_totals hooks.
+        // Falling back to wc_get_product() only if cart data is unavailable.
+        $product = $cartItem['data'] ?? null;
+        if (!$product instanceof \WC_Product) {
+          $product = wc_get_product(!empty($cartItem['variation_id']) ? $cartItem['variation_id'] : $cartItem['product_id']);
         }
         $mappedProduct = $this->dataMapperService->mapProductData($cartItem, $product);
 
