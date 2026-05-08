@@ -232,6 +232,28 @@ class DataMapperService
 
   private function mapAmount(array $productData, string $value, array $cart_item): float
   {
+    // Opt-in: when amountPath is configured, resolve the per-item amount from
+    // the cart item directly. This covers cart-level pricing plugins (Gravity
+    // Forms, Name Your Price, Dynamic Pricing, Subscriptions, etc.) without
+    // changing behavior for merchants who haven't configured it.
+    $amountPath = (string) $this->config->getOption('amountPath', '');
+    if ($amountPath !== '') {
+      $resolved = $this->resolveCartItemPath($cart_item, $amountPath);
+      if (is_numeric($resolved)) {
+        $amount = (float) $resolved;
+        if ((bool) $this->config->getOption('amountPathIsPerLine', false)) {
+          $qty = max(1, (int) ($cart_item['quantity'] ?? 1));
+          return $amount / $qty;
+        }
+        return $amount;
+      }
+      $this->logger->sendLog(
+        "Zonos amountPath '{$amountPath}' did not resolve to a numeric value; falling back to mapping value '{$value}'",
+        LogType::ERROR
+      );
+      // intentional fall-through to existing mapping behavior
+    }
+
     $price = 0;
     switch ($value) {
       case 'plugin_wapf':
@@ -249,6 +271,53 @@ class DataMapperService
     }
 
     return (float)($productData[$value] ?? 0);
+  }
+
+  /**
+   * Walk a dot-separated path into a cart item to resolve a value. When a
+   * node is a WC_Data instance (WC_Product, WC_Product_Variation, etc.),
+   * auto-flatten via get_data() so paths like "data.price" reach the price
+   * set by set_price() at woocommerce_add_cart_item.
+   *
+   * @param array<string, mixed> $cart_item Cart item data
+   * @param string $path Dot-separated path
+   * @return mixed|null null if the path cannot be resolved
+   */
+  private function resolveCartItemPath(array $cart_item, string $path): mixed
+  {
+    $parts = explode('.', $path);
+    $node = $cart_item;
+    foreach ($parts as $part) {
+      if ($part === '') {
+        return null;
+      }
+      if (is_array($node)) {
+        if (!array_key_exists($part, $node)) {
+          return null;
+        }
+        $node = $node[$part];
+        continue;
+      }
+      if ($node instanceof \WC_Data) {
+        // Prefer the canonical getter so values written via set_<prop>()
+        // (which live in $changes, not $data) remain reachable.
+        // WC_Data::get_<prop>() delegates to get_prop(), which consults
+        // $changes before $data; get_data() returns $this->data only.
+        $getter = 'get_' . $part;
+        if (method_exists($node, $getter)) {
+          $node = $node->{$getter}();
+          continue;
+        }
+        $data = $node->get_data();
+        if (!array_key_exists($part, $data)) {
+          return null;
+        }
+        $node = $data[$part];
+        continue;
+      }
+      return null;
+    }
+    return $node;
   }
 
   /**

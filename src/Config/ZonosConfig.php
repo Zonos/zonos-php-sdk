@@ -19,6 +19,13 @@ class ZonosConfig
   private array $mappings = [];
 
   /**
+   * Free-form options keyed by name (e.g. 'amountPath').
+   *
+   * @var array<string, mixed>
+   */
+  private array $options = [];
+
+  /**
    * Create a new ZonosConfig instance
    *
    * @param array<string, mixed> $config Configuration settings
@@ -26,6 +33,7 @@ class ZonosConfig
   public function __construct(array $config = [])
   {
     $this->mappings = $config['mappings'] ?? [];
+    $this->options = $config['options'] ?? [];
   }
 
   /**
@@ -47,5 +55,17 @@ class ZonosConfig
   public function getMapping(string $entity): ?array
   {
     return $this->mappings[$entity] ?? null;
+  }
+
+  /**
+   * Get a top-level option value, with a default fallback.
+   *
+   * @param string $key Option key
+   * @param mixed $default Value to return if option is unset
+   * @return mixed
+   */
+  public function getOption(string $key, mixed $default = null): mixed
+  {
+    return $this->options[$key] ?? $default;
   }
 }
