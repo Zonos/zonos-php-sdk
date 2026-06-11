@@ -162,6 +162,33 @@ class DataMapperService
               $value = (string)$value;
             }
             break;
+          case 'addon_fields':
+            // Opt-in: pull the cart line's display fields straight from
+            // WooCommerce's standard woocommerce_get_item_data filter — the
+            // same source the native cart/order view uses. Any add-on plugin
+            // (Gravity Forms, WAPF, YITH, etc.) that registers display data is
+            // surfaced with its real labels, already product-specific and free
+            // of the field-id collisions that raw _gravity_form_lead lookups hit.
+            $itemData = apply_filters('woocommerce_get_item_data', [], $cart_item);
+            foreach ((array)$itemData as $row) {
+              if (!is_array($row)) {
+                continue;
+              }
+              // WC core uses 'key'/'display'; some add-ons use 'name'/'value'.
+              $label = trim(wp_strip_all_tags((string)($row['key'] ?? $row['name'] ?? '')));
+              $cleanValue = trim(wp_strip_all_tags((string)($row['display'] ?? $row['value'] ?? '')));
+              if ($label !== '' && $cleanValue !== '') {
+                // 'Alias: ' prefix is required: on import, WordpressService
+                // strips it and uses the remainder as the order-item meta key
+                // (i.e. the field label), matching the 'custom' alias path.
+                $productAttributes[] = [
+                  'key' => 'Alias: ' . $label,
+                  'value' => $cleanValue,
+                ];
+              }
+            }
+            // $value stays null so the single-append tail below is skipped.
+            break;
         }
 
         if ($value) {
@@ -175,7 +202,11 @@ class DataMapperService
             'value' => $value,
           ];
         }
-      } catch (\Exception $e) {
+      } catch (\Throwable $e) {
+        // \Throwable (not just \Exception): the addon_fields case runs
+        // arbitrary third-party hook code via woocommerce_get_item_data, which
+        // can throw \Error/\TypeError. Contain it per-row so one bad add-on
+        // plugin can't abort the whole cart export.
         $this->logger->sendLog('Error mapping attribute ' . $attribute, LogType::ERROR);
       }
     }
