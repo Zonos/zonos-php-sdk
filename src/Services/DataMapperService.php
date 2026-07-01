@@ -299,6 +299,24 @@ class DataMapperService
         }
 
         return $price + (float)($productData['price'] ?? 0);
+      case 'price':
+        // Derive the per-unit amount from the cart line rather than the
+        // catalog price so cart-level price modifications (product bundles,
+        // dynamic pricing, role-based pricing, etc.) are reflected. Without
+        // this, bundled/discounted items export at their standalone catalog
+        // price and the checkout total exceeds the cart total.
+        //
+        // line_subtotal is the pre-tax, pre-coupon line total; coupons are
+        // exported separately as cart adjustments, so this must remain
+        // pre-coupon to avoid double-counting. Fall back to the catalog price
+        // when the line subtotal is unavailable (e.g. totals not yet
+        // calculated).
+        $lineSubtotal = $cart_item['line_subtotal'] ?? null;
+        $quantity = (int)($cart_item['quantity'] ?? 0);
+        if (is_numeric($lineSubtotal) && $quantity > 0) {
+          return (float)$lineSubtotal / $quantity;
+        }
+        return (float)($productData['price'] ?? 0);
     }
 
     return (float)($productData[$value] ?? 0);
