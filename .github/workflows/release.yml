@@ -29,5 +29,6 @@ jobs:
       dry_run: ${{ inputs.dry_run }}
       version_constant: VERSION
       version_files: src/ZonosSdk.php
+      use_app_token: true
     secrets:
       app_private_key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}

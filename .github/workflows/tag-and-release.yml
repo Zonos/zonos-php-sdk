@@ -19,5 +19,6 @@ jobs:
     with:
       version_constant: VERSION
       version_file: src/ZonosSdk.php
+      use_app_token: true
     secrets:
       app_private_key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
