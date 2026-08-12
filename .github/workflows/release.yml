@@ -1,5 +1,8 @@
 name: Release
 
+# Opens the version-bump PR. Tagging happens in tag-and-release.yml after the
+# PR merges, so the tag always points at a commit on the base branch.
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,6 +10,11 @@ on:
         description: "Version to release, vX.Y.Z"
         required: true
         type: string
+      base_branch:
+        description: "Branch to release from"
+        required: false
+        type: string
+        default: main
       dry_run:
         description: "Show the diff without pushing"
         required: false
@@ -23,12 +31,95 @@ concurrency:
 
 jobs:
   version-pr:
-    uses: Zonos/github-actions/.github/workflows/php-plugin-version-pr.yml@v1
-    with:
-      version: ${{ inputs.version }}
-      dry_run: ${{ inputs.dry_run }}
-      version_constant: VERSION
-      version_files: src/ZonosSdk.php
-      use_app_token: true
-    secrets:
-      app_private_key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Validate inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must match vX.Y.Z (got '$VERSION')"
+            exit 1
+          fi
+          if [[ ! "$BASE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::invalid base_branch '$BASE_BRANCH'"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::error::tag $VERSION already exists"
+            exit 1
+          fi
+          if git ls-remote --exit-code --heads origin "update-version-$VERSION" >/dev/null 2>&1; then
+            echo "::error::branch update-version-$VERSION already exists on origin. Delete it and re-run."
+            exit 1
+          fi
+          {
+            echo "VERSION=$VERSION"
+            echo "VERSION_NUMBER=${VERSION#v}"
+            echo "TEMP_BRANCH=update-version-$VERSION"
+          } >> "$GITHUB_ENV"
+
+      - name: Bump version
+        run: |
+          set -euo pipefail
+          sed -i -E "s/define\('VERSION', *'[0-9]+\.[0-9]+\.[0-9]+'\)/define('VERSION', '${VERSION_NUMBER}')/" src/ZonosSdk.php
+          # Confirm the edit landed: a silently unmatched pattern would ship a
+          # release whose source still declares the old version.
+          grep -qF "define('VERSION', '${VERSION_NUMBER}')" src/ZonosSdk.php || {
+            echo "::error::src/ZonosSdk.php does not declare VERSION ${VERSION_NUMBER}. Expected a line matching: define('VERSION', 'X.Y.Z')"
+            exit 1
+          }
+
+      - name: Verify there is something to commit
+        env:
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "::error::nothing to commit — the tree already declares ${VERSION_NUMBER}. Pick a higher version, or the bump is already on ${BASE_BRANCH}."
+            exit 1
+          fi
+
+      - name: Show dry run summary
+        if: inputs.dry_run
+        run: |
+          echo "=== DRY RUN — nothing will be pushed ==="
+          echo "Version: ${VERSION}"
+          echo "Branch that would be created: ${TEMP_BRANCH}"
+          echo ""
+          git --no-pager diff
+
+      - name: Commit and open PR
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$TEMP_BRANCH"
+          git commit -am "chore: update version to ${VERSION}"
+          git push origin "$TEMP_BRANCH"
+          gh pr create \
+            --base "$BASE_BRANCH" \
+            --head "$TEMP_BRANCH" \
+            --title "Update version to ${VERSION}" \
+            --body "Automated version bump to ${VERSION}. Merging this PR triggers the tag and GitHub release."

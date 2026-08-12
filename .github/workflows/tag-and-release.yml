@@ -1,7 +1,7 @@
 name: Tag and Release
 
-# No-ops unless src/ZonosSdk.php declares an untagged version, so the tag
-# always lands on main — the DEV-1427 drift that stranded v1.1.11/v1.1.12.
+# Runs on every push to main and exits unless src/ZonosSdk.php declares a
+# version that has no tag yet, so only a version bump produces a release.
 
 on:
   push:
@@ -10,12 +10,73 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: tag-and-release-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: Zonos/github-actions/.github/workflows/php-plugin-release.yml@v1
-    with:
-      version_constant: VERSION
-      version_file: src/ZonosSdk.php
-      use_app_token: true
-    secrets:
-      app_private_key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Determine whether a release is due
+        id: check
+        run: |
+          set -euo pipefail
+          # `|| true` is load-bearing: under pipefail a no-match grep kills the
+          # step here, so the error below would never print.
+          VERSION_NUMBER=$(grep -oE "define\('VERSION', *'[0-9]+\.[0-9]+\.[0-9]+'\)" src/ZonosSdk.php \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+          if [ -z "$VERSION_NUMBER" ]; then
+            echo "::error::could not read VERSION from src/ZonosSdk.php"
+            exit 1
+          fi
+          VERSION="v${VERSION_NUMBER}"
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "Tag ${VERSION} already exists. Nothing to release."
+            echo "due=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "due=true" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build release notes
+        if: steps.check.outputs.due == 'true'
+        run: |
+          set -euo pipefail
+          # Highest semver tag, not newest by commit date, and no hard-fail
+          # when the repo has no tags yet.
+          PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ -n "$PREV_TAG" ]; then RANGE="${PREV_TAG}..HEAD"; else RANGE="HEAD"; fi
+          {
+            echo "## Release Notes"
+            echo ""
+            git log --pretty=format:'- %s (%h)' "$RANGE"
+            echo ""
+          } > release_notes.txt
+          cat release_notes.txt
+
+      - name: Create tag and release
+        if: steps.check.outputs.due == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" --title "Release $VERSION" --notes-file release_notes.txt
