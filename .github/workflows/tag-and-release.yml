@@ -1,10 +1,7 @@
 name: Tag and Release
 
-# Fires on every push to main and no-ops unless src/ZonosSdk.php declares a
-# version with no matching tag. The tag therefore always lands on a commit
-# that is actually on main — the old workflow tagged the temp branch before
-# its PR merged, which is why v1.1.11 and v1.1.12 shipped while main still
-# said 1.1.10 (DEV-1427).
+# No-ops unless src/ZonosSdk.php declares an untagged version, so the tag
+# always lands on main — the DEV-1427 drift that stranded v1.1.11/v1.1.12.
 
 on:
   push:
