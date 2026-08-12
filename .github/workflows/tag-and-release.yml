@@ -22,7 +22,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          app-id: 2749186
           private-key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
 
       - name: Checkout repository
