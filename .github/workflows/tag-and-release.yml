@@ -1,0 +1,23 @@
+name: Tag and Release
+
+# Fires on every push to main and no-ops unless src/ZonosSdk.php declares a
+# version with no matching tag. The tag therefore always lands on a commit
+# that is actually on main — the old workflow tagged the temp branch before
+# its PR merged, which is why v1.1.11 and v1.1.12 shipped while main still
+# said 1.1.10 (DEV-1427).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: Zonos/github-actions/.github/workflows/php-plugin-release.yml@v1
+    with:
+      version_constant: VERSION
+      version_file: src/ZonosSdk.php
+    secrets:
+      app_private_key: ${{ secrets.TF_VAR_GITHUB_APP_PRIVATE_KEY }}
