@@ -52,6 +52,7 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           BASE_BRANCH: ${{ inputs.base_branch }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -60,6 +61,13 @@ jobs:
           fi
           if [[ ! "$BASE_BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
             echo "::error::invalid base_branch '$BASE_BRANCH'"
+            exit 1
+          fi
+          # tag-and-release.yml only watches the default branch, so a bump merged
+          # elsewhere would never tag. Fail here rather than silently not releasing.
+          # Skipped if the context is unavailable, so it can never wrongly block.
+          if [ -n "${DEFAULT_BRANCH:-}" ] && [ "$BASE_BRANCH" != "$DEFAULT_BRANCH" ]; then
+            echo "::error::base_branch must be '$DEFAULT_BRANCH' (got '$BASE_BRANCH'). Releases only run from the default branch."
             exit 1
           fi
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
