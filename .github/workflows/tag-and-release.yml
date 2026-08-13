@@ -64,7 +64,9 @@ jobs:
           {
             echo "## Release Notes"
             echo ""
-            git log --pretty=format:'- %s (%h)' "$RANGE"
+            # Squash-merge names the bump commit from the PR title, so match any
+            # casing or prefix rather than just the one we author.
+            git log --pretty=format:'- %s (%h)' --invert-grep -i --grep='update version to v' "$RANGE"
             echo ""
           } > release_notes.txt
           cat release_notes.txt
