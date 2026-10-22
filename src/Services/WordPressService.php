@@ -348,9 +348,16 @@ class WordPressService extends AbstractZonosService
       }
 
       $subtotal = $group['parentQuantity'] * $group['parentAmount'];
+      $total = $subtotal;
+      $parentSku = $group['parentSku'] ?? '';
+      foreach ($adjustments as $adjustment) {
+        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $parentSku) {
+          $total += $adjustment->amount;
+        }
+      }
       $wooOrder->add_product($product, $group['parentQuantity'], [
           'subtotal' => $subtotal,
-          'total' => $subtotal,
+          'total' => $total,
       ]);
 
       // Stock management for parent
