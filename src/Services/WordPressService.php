@@ -326,7 +326,57 @@ class WordPressService extends AbstractZonosService
   private function addOrderItems(\WC_Order $wooOrder, array $items, array $adjustments): array
   {
     $stockChanges = [];
-    foreach ($items as $item) {
+    [$bundles, $individuals] = $this->groupByBundleParent($items);
+    foreach ($bundles as $groupKey => $group) {
+      $product = null;
+
+      // Try SKU first
+      if (!empty($group['parentSku'])) {
+        $wcProductId = wc_get_product_id_by_sku($group['parentSku']);
+        if ($wcProductId) {
+          $product = wc_get_product($wcProductId);
+        }
+      }
+
+      // Fall back to productId
+      if (!$product && !empty($group['parentProductId'])) {
+        $product = wc_get_product((int) $group['parentProductId']);
+      }
+
+      if (!$product || !$product->exists()) {
+        throw new InvalidArgumentException("Bundle parent product not found by SKU: {$group['parentSku']} or ID: {$group['parentProductId']}");
+      }
+
+      $subtotal = $group['parentQuantity'] * $group['parentAmount'];
+      $total = $subtotal;
+      $parentSku = $group['parentSku'] ?? '';
+      foreach ($adjustments as $adjustment) {
+        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $parentSku) {
+          $total += $adjustment->amount;
+        }
+      }
+      $wooOrder->add_product($product, $group['parentQuantity'], [
+          'subtotal' => $subtotal,
+          'total' => $total,
+      ]);
+
+      // Stock management for parent
+      if ($product->managing_stock()) {
+          $currentStock = $product->get_stock_quantity() ?? 0;
+          $previousStockStatus = $product->get_stock_status();
+          $product->set_stock_quantity($currentStock - $group['parentQuantity']);
+          if ($product->get_stock_quantity() <= 0) {
+              $product->set_stock_status('outofstock');
+          }
+          $product->save();
+          $stockChanges[] = [
+              'product' => $product,
+              'quantity' => $group['parentQuantity'],
+              'previous_status' => $previousStockStatus,
+          ];
+      }
+    }
+    foreach ($individuals as $item) {
       $product = null;
 
       if (!empty($item->sku)) {
@@ -758,4 +808,49 @@ class WordPressService extends AbstractZonosService
 
     return false;
   }
+
+  private function getMetadataValue(array $item_metadata, string $key): ?string {
+    foreach($item_metadata as $md){
+      if ($md->key === $key){
+        return $md->value;
+      }
+    }
+    return null;
+  }
+
+  private function groupByBundleParent(array $items): array {
+    $bundleGroups = [];
+    $standaloneItems = [];
+    foreach ($items as $item) {
+      if (!$this->isBundleChildItem($item)) {
+        $standaloneItems[] = $item;
+        continue;
+      }
+
+      $parentSku = $this->getMetadataValue($item->metadata, 'parentSku');
+      $parentProductId = $this->getMetadataValue($item->metadata, 'parentProductId');
+      // Group by SKU if available, fall back to productId
+      $groupKey = ($parentSku !== null && $parentSku !== '') ? $parentSku : $parentProductId;
+
+      if (!isset($bundleGroups[$groupKey])) {
+        $bundleGroups[$groupKey] = [
+          'parentSku'       => $parentSku,
+          'parentProductId' => $parentProductId,
+          'parentAmount'    => (float) $this->getMetadataValue($item->metadata, 'parentAmount'),
+          'parentQuantity'  => (int) $this->getMetadataValue($item->metadata, 'parentQuantity'),
+          'children'        => [],
+        ];
+      }
+      $bundleGroups[$groupKey]['children'][] = $item;
+    }
+    return [$bundleGroups, $standaloneItems];
+  }
+
+  private function isBundleChildItem(Item $item): bool {
+    $parentSku = $this->getMetadataValue($item->metadata, 'parentSku');
+    $parentProductId = $this->getMetadataValue($item->metadata, 'parentProductId');
+    return ($parentSku !== null && $parentSku !== '')
+        || ($parentProductId !== null && $parentProductId !== '');
+  }
+
 }
