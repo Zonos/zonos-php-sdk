@@ -195,6 +195,8 @@ class WordPressService extends AbstractZonosService
 
     try {
       $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
+      // TODO: TEMP DEBUG - remove before merging
+      error_log('[Zonos Debug] Cart adjustments: ' . json_encode($cartData->adjustments));
       $stockChanges = $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
       $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments, $storeCurrencyCode);
@@ -500,7 +502,11 @@ class WordPressService extends AbstractZonosService
       $total = $subtotal;
       foreach ($adjustments as $idx => $adjustment) {
         if (isset($consumedAdjustmentIndices[$idx])) continue;
-        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $item->sku) {
+        $adjSku = $adjustment->sku ?? '';
+        $adjPid = $adjustment->productId ?? '';
+        $matchesSku = $adjSku !== '' && $adjSku === $item->sku;
+        $matchesPid = $adjPid !== '' && $item->productId !== null && $adjPid === $item->productId;
+        if ($matchesSku || $matchesPid) {
           $total += $adjustment->amount;
           $consumedAdjustmentIndices[$idx] = true;
         }
