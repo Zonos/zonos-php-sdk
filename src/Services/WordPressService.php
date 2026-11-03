@@ -359,8 +359,10 @@ class WordPressService extends AbstractZonosService
       $parentSku = $group['parentSku'] ?? '';
       $parentProductId = $group['parentProductId'] ?? '';
 
-      // Count how many children have each SKU/productId so we consume only that many
-      // redistributed adjustments. A standalone item with the same identifier keeps its own.
+      // Count how many children have each SKU/productId so we can limit consumption
+      // per coupon. A standalone item with the same SKU keeps its own adjustments.
+      // The limit is per-child-SKU per-description (coupon code), because multiple
+      // coupons can each produce a redistributed adjustment for the same child SKU.
       $childSkuCounts = [];
       $childPidCounts = [];
       foreach ($group['children'] as $child) {
@@ -371,8 +373,9 @@ class WordPressService extends AbstractZonosService
           $childPidCounts[$child->productId] = ($childPidCounts[$child->productId] ?? 0) + 1;
         }
       }
-      $consumedPerChildSku = [];
-      $consumedPerChildPid = [];
+      // Key: "sku|description" or "pid|description" → consumed count
+      $consumedPerChildSkuDesc = [];
+      $consumedPerChildPidDesc = [];
 
       foreach ($adjustments as $idx => $adjustment) {
         if (isset($consumedAdjustmentIndices[$idx])) continue;
@@ -394,23 +397,28 @@ class WordPressService extends AbstractZonosService
         }
 
         // For ITEM adjustments matching a child SKU or productId: only consume as many
-        // as there are bundle children with that identifier. This prevents stealing
-        // adjustments from standalone items that share the same SKU or productId.
+        // per coupon (description) as there are bundle children with that identifier.
+        // Multiple coupons each produce their own redistributed adjustment per child,
+        // so the limit is per-SKU per-description, not per-SKU globally.
         if ($adjustment->type !== CartAdjustmentType::ITEM) continue;
 
+        $adjDesc = $adjustment->description ?? '';
+
         if ($hasSku && isset($childSkuCounts[$adjSku])) {
-          $alreadyConsumed = $consumedPerChildSku[$adjSku] ?? 0;
+          $key = $adjSku . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildSkuDesc[$key] ?? 0;
           if ($alreadyConsumed < $childSkuCounts[$adjSku]) {
             $total += $adjustment->amount;
             $consumedAdjustmentIndices[$idx] = true;
-            $consumedPerChildSku[$adjSku] = $alreadyConsumed + 1;
+            $consumedPerChildSkuDesc[$key] = $alreadyConsumed + 1;
           }
         } elseif ($hasPid && isset($childPidCounts[$adjPid])) {
-          $alreadyConsumed = $consumedPerChildPid[$adjPid] ?? 0;
+          $key = $adjPid . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildPidDesc[$key] ?? 0;
           if ($alreadyConsumed < $childPidCounts[$adjPid]) {
             $total += $adjustment->amount;
             $consumedAdjustmentIndices[$idx] = true;
-            $consumedPerChildPid[$adjPid] = $alreadyConsumed + 1;
+            $consumedPerChildPidDesc[$key] = $alreadyConsumed + 1;
           }
         }
       }
