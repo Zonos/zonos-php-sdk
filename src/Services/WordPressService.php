@@ -675,7 +675,7 @@ class WordPressService extends AbstractZonosService
 
       $this->addShippingIfNeeded($wooOrder, $orderData, $storeCurrencyCode);
       $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $orderData, $storeCurrencyCode);
-      $this->addDiscount($wooOrder, $orderData, $storeCurrencyCode);
+      $this->addDiscount($wooOrder, $orderData, $adjustments, $storeCurrencyCode);
 
       $wooOrder->calculate_totals(false);
 
@@ -699,19 +699,24 @@ class WordPressService extends AbstractZonosService
    * @param Order $orderData The order data
    * @param string $storeCurrencyCode Store currency code
    */
-  private function addDiscount(\WC_Order $wooOrder, Order $orderData, string $storeCurrencyCode): void
+  private function addDiscount(\WC_Order $wooOrder, Order $orderData, array $adjustments, string $storeCurrencyCode): void
   {
-    if ($orderData->amountSubtotalsDetails === null) {
-      return;
-    }
-
     $discount = 0;
 
-    array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$discount) {
-      if ($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
-        $discount += $value->amount;
+    if (!empty($adjustments)) {
+      // Use cart adjustments as the source of truth when present —
+      // these match the coupon items created in processOrderTotals.
+      foreach ($adjustments as $adjustment) {
+        $discount += $adjustment->amount;
       }
-    }, $storeCurrencyCode);
+    } elseif ($orderData->amountSubtotalsDetails !== null) {
+      // Fall back to order-level DISCOUNT entries when no cart adjustments exist
+      array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$discount) {
+        if ($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
+          $discount += $value->amount;
+        }
+      }, $storeCurrencyCode);
+    }
 
     $wooOrder->set_discount_total(abs($discount));
     $wooOrder->set_discount_tax(0);
