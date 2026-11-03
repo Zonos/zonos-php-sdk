@@ -157,13 +157,13 @@ class WordPressService extends AbstractZonosService
     if ($isValidForProduct || !$isValidForProduct && $coupon->get_discount_type() === 'fixed_cart') {
       switch ($coupon->get_discount_type()) {
         case 'percent':
-          return -1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
+          return round(-1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'], 2);
         case 'fixed_product':
-          return -1 * (float)($coupon->get_amount() * $cartItem['quantity']);
+          return round(-1 * (float)($coupon->get_amount() * $cartItem['quantity']), 2);
         case 'fixed_cart':
           $cartSubtotal = WC()->cart->subtotal;
           $proportion = $cartItem['line_subtotal'] / $cartSubtotal;
-          return -1 * (float)($coupon->get_amount() * $proportion);
+          return round(-1 * (float)($coupon->get_amount() * $proportion), 2);
         default:
           return null;
       }
@@ -326,7 +326,124 @@ class WordPressService extends AbstractZonosService
   private function addOrderItems(\WC_Order $wooOrder, array $items, array $adjustments): array
   {
     $stockChanges = [];
-    foreach ($items as $item) {
+    [$bundles, $individuals] = $this->groupByBundleParent($items);
+
+    // Track consumed adjustment indices so each adjustment is applied only once.
+    // After bundle expansion, ItemDgs redistributes parent-SKU adjustments to child SKUs.
+    // Without tracking, the same adjustment could match both a bundle child and a
+    // standalone item with the same SKU.
+    $consumedAdjustmentIndices = [];
+
+    foreach ($bundles as $groupKey => $group) {
+      $product = null;
+
+      // Try SKU first
+      if (!empty($group['parentSku'])) {
+        $wcProductId = wc_get_product_id_by_sku($group['parentSku']);
+        if ($wcProductId) {
+          $product = wc_get_product($wcProductId);
+        }
+      }
+
+      // Fall back to productId
+      if (!$product && !empty($group['parentProductId'])) {
+        $product = wc_get_product((int) $group['parentProductId']);
+      }
+
+      if (!$product || !$product->exists()) {
+        throw new InvalidArgumentException("Bundle parent product not found by SKU: {$group['parentSku']} or ID: {$group['parentProductId']}");
+      }
+
+      $subtotal = $group['parentQuantity'] * $group['parentAmount'];
+      $total = $subtotal;
+      $parentSku = $group['parentSku'] ?? '';
+      $parentProductId = $group['parentProductId'] ?? '';
+
+      // Count how many children have each SKU/productId so we can limit consumption
+      // per coupon. A standalone item with the same SKU keeps its own adjustments.
+      // The limit is per-child-SKU per-description (coupon code), because multiple
+      // coupons can each produce a redistributed adjustment for the same child SKU.
+      $childSkuCounts = [];
+      $childPidCounts = [];
+      foreach ($group['children'] as $child) {
+        if ($child->sku !== null && $child->sku !== '') {
+          $childSkuCounts[$child->sku] = ($childSkuCounts[$child->sku] ?? 0) + 1;
+        }
+        if ($child->productId !== null && $child->productId !== '') {
+          $childPidCounts[$child->productId] = ($childPidCounts[$child->productId] ?? 0) + 1;
+        }
+      }
+      // Key: "sku|description" or "pid|description" → consumed count
+      $consumedPerChildSkuDesc = [];
+      $consumedPerChildPidDesc = [];
+
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
+
+        $adjSku = $adjustment->sku ?? '';
+        $adjPid = $adjustment->productId ?? '';
+        $hasSku = $adjSku !== '';
+        $hasPid = $adjPid !== '';
+
+        if (!$hasSku && !$hasPid) continue;
+
+        // Always match adjustments referencing the parent SKU or productId directly
+        $matchesParentSku = $hasSku && $parentSku !== '' && $adjSku === $parentSku;
+        $matchesParentPid = $hasPid && $parentProductId !== '' && $adjPid === $parentProductId;
+        if ($matchesParentSku || $matchesParentPid) {
+          $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
+          continue;
+        }
+
+        // For ITEM adjustments matching a child SKU or productId: only consume as many
+        // per coupon (description) as there are bundle children with that identifier.
+        // Multiple coupons each produce their own redistributed adjustment per child,
+        // so the limit is per-SKU per-description, not per-SKU globally.
+        if ($adjustment->type !== CartAdjustmentType::ITEM) continue;
+
+        $adjDesc = $adjustment->description ?? '';
+
+        if ($hasSku && isset($childSkuCounts[$adjSku])) {
+          $key = $adjSku . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildSkuDesc[$key] ?? 0;
+          if ($alreadyConsumed < $childSkuCounts[$adjSku]) {
+            $total += $adjustment->amount;
+            $consumedAdjustmentIndices[$idx] = true;
+            $consumedPerChildSkuDesc[$key] = $alreadyConsumed + 1;
+          }
+        } elseif ($hasPid && isset($childPidCounts[$adjPid])) {
+          $key = $adjPid . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildPidDesc[$key] ?? 0;
+          if ($alreadyConsumed < $childPidCounts[$adjPid]) {
+            $total += $adjustment->amount;
+            $consumedAdjustmentIndices[$idx] = true;
+            $consumedPerChildPidDesc[$key] = $alreadyConsumed + 1;
+          }
+        }
+      }
+      $wooOrder->add_product($product, $group['parentQuantity'], [
+          'subtotal' => $subtotal,
+          'total' => $total,
+      ]);
+
+      // Stock management for parent
+      if ($product->managing_stock()) {
+          $currentStock = $product->get_stock_quantity() ?? 0;
+          $previousStockStatus = $product->get_stock_status();
+          $product->set_stock_quantity($currentStock - $group['parentQuantity']);
+          if ($product->get_stock_quantity() <= 0) {
+              $product->set_stock_status('outofstock');
+          }
+          $product->save();
+          $stockChanges[] = [
+              'product' => $product,
+              'quantity' => $group['parentQuantity'],
+              'previous_status' => $previousStockStatus,
+          ];
+      }
+    }
+    foreach ($individuals as $item) {
       $product = null;
 
       if (!empty($item->sku)) {
@@ -381,9 +498,15 @@ class WordPressService extends AbstractZonosService
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
       $total = $subtotal;
-      foreach ($adjustments as $adjustment) {
-        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $item->sku) {
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
+        $adjSku = $adjustment->sku ?? '';
+        $adjPid = $adjustment->productId ?? '';
+        $matchesSku = $adjSku !== '' && $adjSku === $item->sku;
+        $matchesPid = $adjPid !== '' && $item->productId !== null && $adjPid === $item->productId;
+        if ($matchesSku || $matchesPid) {
           $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
         }
       }
       $itemId = $wooOrder->add_product(
@@ -556,7 +679,7 @@ class WordPressService extends AbstractZonosService
 
       $this->addShippingIfNeeded($wooOrder, $orderData, $storeCurrencyCode);
       $this->addFeeIfNeeded($wooOrder, 'Duties and Taxes', $orderData, $storeCurrencyCode);
-      $this->addDiscount($wooOrder, $orderData, $storeCurrencyCode);
+      $this->addDiscount($wooOrder, $orderData, $adjustments, $storeCurrencyCode);
 
       $wooOrder->calculate_totals(false);
 
@@ -580,19 +703,24 @@ class WordPressService extends AbstractZonosService
    * @param Order $orderData The order data
    * @param string $storeCurrencyCode Store currency code
    */
-  private function addDiscount(\WC_Order $wooOrder, Order $orderData, string $storeCurrencyCode): void
+  private function addDiscount(\WC_Order $wooOrder, Order $orderData, array $adjustments, string $storeCurrencyCode): void
   {
-    if ($orderData->amountSubtotalsDetails === null) {
-      return;
-    }
-
     $discount = 0;
 
-    array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$discount) {
-      if ($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
-        $discount += $value->amount;
+    if (!empty($adjustments)) {
+      // Use cart adjustments as the source of truth when present —
+      // these match the coupon items created in processOrderTotals.
+      foreach ($adjustments as $adjustment) {
+        $discount += $adjustment->amount;
       }
-    }, $storeCurrencyCode);
+    } elseif ($orderData->amountSubtotalsDetails !== null) {
+      // Fall back to order-level DISCOUNT entries when no cart adjustments exist
+      array_walk($orderData->amountSubtotalsDetails, function ($value, $key, $storeCurrencyCode) use (&$discount) {
+        if ($value->type === 'DISCOUNT' && $value->currencyCode === $storeCurrencyCode) {
+          $discount += $value->amount;
+        }
+      }, $storeCurrencyCode);
+    }
 
     $wooOrder->set_discount_total(abs($discount));
     $wooOrder->set_discount_tax(0);
@@ -758,4 +886,49 @@ class WordPressService extends AbstractZonosService
 
     return false;
   }
+
+  private function getMetadataValue(array $item_metadata, string $key): ?string {
+    foreach($item_metadata as $md){
+      if ($md->key === $key){
+        return $md->value;
+      }
+    }
+    return null;
+  }
+
+  private function groupByBundleParent(array $items): array {
+    $bundleGroups = [];
+    $standaloneItems = [];
+    foreach ($items as $item) {
+      if (!$this->isBundleChildItem($item)) {
+        $standaloneItems[] = $item;
+        continue;
+      }
+
+      $parentSku = $this->getMetadataValue($item->metadata, 'parentSku');
+      $parentProductId = $this->getMetadataValue($item->metadata, 'parentProductId');
+      // Group by SKU if available, fall back to productId
+      $groupKey = ($parentSku !== null && $parentSku !== '') ? $parentSku : $parentProductId;
+
+      if (!isset($bundleGroups[$groupKey])) {
+        $bundleGroups[$groupKey] = [
+          'parentSku'       => $parentSku,
+          'parentProductId' => $parentProductId,
+          'parentAmount'    => (float) $this->getMetadataValue($item->metadata, 'parentAmount'),
+          'parentQuantity'  => (int) $this->getMetadataValue($item->metadata, 'parentQuantity'),
+          'children'        => [],
+        ];
+      }
+      $bundleGroups[$groupKey]['children'][] = $item;
+    }
+    return [$bundleGroups, $standaloneItems];
+  }
+
+  private function isBundleChildItem(Item $item): bool {
+    $parentSku = $this->getMetadataValue($item->metadata, 'parentSku');
+    $parentProductId = $this->getMetadataValue($item->metadata, 'parentProductId');
+    return ($parentSku !== null && $parentSku !== '')
+        || ($parentProductId !== null && $parentProductId !== '');
+  }
+
 }
