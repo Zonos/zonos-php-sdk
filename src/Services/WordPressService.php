@@ -328,6 +328,12 @@ class WordPressService extends AbstractZonosService
     $stockChanges = [];
     [$bundles, $individuals] = $this->groupByBundleParent($items);
 
+    // Track consumed adjustment indices so each adjustment is applied only once.
+    // After bundle expansion, ItemDgs redistributes parent-SKU adjustments to child SKUs.
+    // Without tracking, the same adjustment could match both a bundle child and a
+    // standalone item with the same SKU.
+    $consumedAdjustmentIndices = [];
+
     foreach ($bundles as $groupKey => $group) {
       $product = null;
 
@@ -349,12 +355,76 @@ class WordPressService extends AbstractZonosService
       }
 
       $subtotal = $group['parentQuantity'] * $group['parentAmount'];
-      // Don't bake discounts into line-item total — WooCommerce's coupon system
-      // (created in processOrderTotals) handles discount display and calculate_totals
-      // will redistribute coupon amounts across line items proportionally.
+      $total = $subtotal;
+      $parentSku = $group['parentSku'] ?? '';
+      $parentProductId = $group['parentProductId'] ?? '';
+
+      // Count how many children have each SKU/productId so we can limit consumption
+      // per coupon. A standalone item with the same SKU keeps its own adjustments.
+      // The limit is per-child-SKU per-description (coupon code), because multiple
+      // coupons can each produce a redistributed adjustment for the same child SKU.
+      $childSkuCounts = [];
+      $childPidCounts = [];
+      foreach ($group['children'] as $child) {
+        if ($child->sku !== null && $child->sku !== '') {
+          $childSkuCounts[$child->sku] = ($childSkuCounts[$child->sku] ?? 0) + 1;
+        }
+        if ($child->productId !== null && $child->productId !== '') {
+          $childPidCounts[$child->productId] = ($childPidCounts[$child->productId] ?? 0) + 1;
+        }
+      }
+      // Key: "sku|description" or "pid|description" → consumed count
+      $consumedPerChildSkuDesc = [];
+      $consumedPerChildPidDesc = [];
+
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
+
+        $adjSku = $adjustment->sku ?? '';
+        $adjPid = $adjustment->productId ?? '';
+        $hasSku = $adjSku !== '';
+        $hasPid = $adjPid !== '';
+
+        if (!$hasSku && !$hasPid) continue;
+
+        // Always match adjustments referencing the parent SKU or productId directly
+        $matchesParentSku = $hasSku && $parentSku !== '' && $adjSku === $parentSku;
+        $matchesParentPid = $hasPid && $parentProductId !== '' && $adjPid === $parentProductId;
+        if ($matchesParentSku || $matchesParentPid) {
+          $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
+          continue;
+        }
+
+        // For ITEM adjustments matching a child SKU or productId: only consume as many
+        // per coupon (description) as there are bundle children with that identifier.
+        // Multiple coupons each produce their own redistributed adjustment per child,
+        // so the limit is per-SKU per-description, not per-SKU globally.
+        if ($adjustment->type !== CartAdjustmentType::ITEM) continue;
+
+        $adjDesc = $adjustment->description ?? '';
+
+        if ($hasSku && isset($childSkuCounts[$adjSku])) {
+          $key = $adjSku . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildSkuDesc[$key] ?? 0;
+          if ($alreadyConsumed < $childSkuCounts[$adjSku]) {
+            $total += $adjustment->amount;
+            $consumedAdjustmentIndices[$idx] = true;
+            $consumedPerChildSkuDesc[$key] = $alreadyConsumed + 1;
+          }
+        } elseif ($hasPid && isset($childPidCounts[$adjPid])) {
+          $key = $adjPid . '|' . $adjDesc;
+          $alreadyConsumed = $consumedPerChildPidDesc[$key] ?? 0;
+          if ($alreadyConsumed < $childPidCounts[$adjPid]) {
+            $total += $adjustment->amount;
+            $consumedAdjustmentIndices[$idx] = true;
+            $consumedPerChildPidDesc[$key] = $alreadyConsumed + 1;
+          }
+        }
+      }
       $wooOrder->add_product($product, $group['parentQuantity'], [
           'subtotal' => $subtotal,
-          'total' => $subtotal,
+          'total' => $total,
       ]);
 
       // Stock management for parent
@@ -427,14 +497,20 @@ class WordPressService extends AbstractZonosService
       }
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
-      // Don't bake discounts into line-item total — WooCommerce coupon items
-      // handle display and calculate_totals redistributes them proportionally.
+      $total = $subtotal;
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
+        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $item->sku) {
+          $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
+        }
+      }
       $itemId = $wooOrder->add_product(
         $product,
         $item->quantity,
         [
           'subtotal' => $subtotal,
-          'total' => $subtotal,
+          'total' => $total,
         ]
       );
 
