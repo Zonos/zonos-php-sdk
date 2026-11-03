@@ -327,6 +327,13 @@ class WordPressService extends AbstractZonosService
   {
     $stockChanges = [];
     [$bundles, $individuals] = $this->groupByBundleParent($items);
+
+    // Track consumed adjustment indices so each adjustment is applied only once.
+    // After bundle expansion, ItemDgs redistributes parent-SKU adjustments to child SKUs.
+    // Without tracking, the same adjustment could match both a bundle child and a
+    // standalone item with the same SKU.
+    $consumedAdjustmentIndices = [];
+
     foreach ($bundles as $groupKey => $group) {
       $product = null;
 
@@ -350,9 +357,41 @@ class WordPressService extends AbstractZonosService
       $subtotal = $group['parentQuantity'] * $group['parentAmount'];
       $total = $subtotal;
       $parentSku = $group['parentSku'] ?? '';
-      foreach ($adjustments as $adjustment) {
-        if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $parentSku) {
+      $parentProductId = $group['parentProductId'] ?? '';
+
+      // Count how many children have each SKU so we consume only that many
+      // redistributed adjustments. A standalone item with the same SKU keeps its own.
+      $childSkuCounts = [];
+      foreach ($group['children'] as $child) {
+        if ($child->sku !== null && $child->sku !== '') {
+          $childSkuCounts[$child->sku] = ($childSkuCounts[$child->sku] ?? 0) + 1;
+        }
+      }
+      // Track how many redistributed adjustments we've consumed per child SKU
+      $consumedPerChildSku = [];
+
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
+        if ($adjustment->sku === null || $adjustment->sku === '') continue;
+
+        // Always match adjustments referencing the parent SKU or productId directly
+        if ($adjustment->sku === $parentSku
+          || ($parentProductId !== '' && $adjustment->productId !== null && $adjustment->productId === $parentProductId)) {
           $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
+          continue;
+        }
+
+        // For ITEM adjustments matching a child SKU: only consume as many as there
+        // are bundle children with that SKU. This prevents stealing adjustments
+        // from standalone items that share the same SKU.
+        if ($adjustment->type === CartAdjustmentType::ITEM && isset($childSkuCounts[$adjustment->sku])) {
+          $alreadyConsumed = $consumedPerChildSku[$adjustment->sku] ?? 0;
+          if ($alreadyConsumed < $childSkuCounts[$adjustment->sku]) {
+            $total += $adjustment->amount;
+            $consumedAdjustmentIndices[$idx] = true;
+            $consumedPerChildSku[$adjustment->sku] = $alreadyConsumed + 1;
+          }
         }
       }
       $wooOrder->add_product($product, $group['parentQuantity'], [
@@ -431,9 +470,11 @@ class WordPressService extends AbstractZonosService
 
       $subtotal = $item->quantity * ($item->amount ?? $product->get_price());
       $total = $subtotal;
-      foreach ($adjustments as $adjustment) {
+      foreach ($adjustments as $idx => $adjustment) {
+        if (isset($consumedAdjustmentIndices[$idx])) continue;
         if ($adjustment->sku !== null && $adjustment->sku !== '' && $adjustment->sku === $item->sku) {
           $total += $adjustment->amount;
+          $consumedAdjustmentIndices[$idx] = true;
         }
       }
       $itemId = $wooOrder->add_product(
