@@ -157,13 +157,13 @@ class WordPressService extends AbstractZonosService
     if ($isValidForProduct || !$isValidForProduct && $coupon->get_discount_type() === 'fixed_cart') {
       switch ($coupon->get_discount_type()) {
         case 'percent':
-          return -1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'];
+          return round(-1 * (float)($coupon->get_amount() / 100) * $cartItem['line_subtotal'], 2);
         case 'fixed_product':
-          return -1 * (float)($coupon->get_amount() * $cartItem['quantity']);
+          return round(-1 * (float)($coupon->get_amount() * $cartItem['quantity']), 2);
         case 'fixed_cart':
           $cartSubtotal = WC()->cart->subtotal;
           $proportion = $cartItem['line_subtotal'] / $cartSubtotal;
-          return -1 * (float)($coupon->get_amount() * $proportion);
+          return round(-1 * (float)($coupon->get_amount() * $proportion), 2);
         default:
           return null;
       }
