@@ -195,8 +195,6 @@ class WordPressService extends AbstractZonosService
 
     try {
       $wooOrder = $this->createBaseOrder($orderData->zonosOrderId);
-      // TODO: TEMP DEBUG - remove before merging
-      error_log('[Zonos Debug] Cart adjustments: ' . json_encode($cartData->adjustments));
       $stockChanges = $this->addOrderItems($wooOrder, $orderData->items, $cartData->adjustments);
       $this->setOrderAddresses($wooOrder, $orderData->parties);
       $this->processOrderTotals($wooOrder, $orderData, $cartData->adjustments, $storeCurrencyCode);
