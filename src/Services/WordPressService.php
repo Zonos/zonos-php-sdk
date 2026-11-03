@@ -372,11 +372,18 @@ class WordPressService extends AbstractZonosService
 
       foreach ($adjustments as $idx => $adjustment) {
         if (isset($consumedAdjustmentIndices[$idx])) continue;
-        if ($adjustment->sku === null || $adjustment->sku === '') continue;
+
+        $adjSku = $adjustment->sku ?? '';
+        $adjPid = $adjustment->productId ?? '';
+        $hasSku = $adjSku !== '';
+        $hasPid = $adjPid !== '';
+
+        if (!$hasSku && !$hasPid) continue;
 
         // Always match adjustments referencing the parent SKU or productId directly
-        if ($adjustment->sku === $parentSku
-          || ($parentProductId !== '' && $adjustment->productId !== null && $adjustment->productId === $parentProductId)) {
+        $matchesParentSku = $hasSku && $parentSku !== '' && $adjSku === $parentSku;
+        $matchesParentPid = $hasPid && $parentProductId !== '' && $adjPid === $parentProductId;
+        if ($matchesParentSku || $matchesParentPid) {
           $total += $adjustment->amount;
           $consumedAdjustmentIndices[$idx] = true;
           continue;
@@ -385,12 +392,12 @@ class WordPressService extends AbstractZonosService
         // For ITEM adjustments matching a child SKU: only consume as many as there
         // are bundle children with that SKU. This prevents stealing adjustments
         // from standalone items that share the same SKU.
-        if ($adjustment->type === CartAdjustmentType::ITEM && isset($childSkuCounts[$adjustment->sku])) {
-          $alreadyConsumed = $consumedPerChildSku[$adjustment->sku] ?? 0;
-          if ($alreadyConsumed < $childSkuCounts[$adjustment->sku]) {
+        if ($hasSku && $adjustment->type === CartAdjustmentType::ITEM && isset($childSkuCounts[$adjSku])) {
+          $alreadyConsumed = $consumedPerChildSku[$adjSku] ?? 0;
+          if ($alreadyConsumed < $childSkuCounts[$adjSku]) {
             $total += $adjustment->amount;
             $consumedAdjustmentIndices[$idx] = true;
-            $consumedPerChildSku[$adjustment->sku] = $alreadyConsumed + 1;
+            $consumedPerChildSku[$adjSku] = $alreadyConsumed + 1;
           }
         }
       }
