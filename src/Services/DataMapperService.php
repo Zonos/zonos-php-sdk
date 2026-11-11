@@ -88,6 +88,22 @@ class DataMapperService
       };
     }
 
+    // Auto-populate GTIN from WooCommerce's native field (WC 9.2+) when
+    // the merchant hasn't explicitly mapped it. Zero-config for stores
+    // that already fill in the GTIN/UPC/EAN on their products.
+    if (empty($result['gtin']) && method_exists($product, 'get_global_unique_id')) {
+      $gtin = (string)$product->get_global_unique_id();
+      if ($gtin === '' && $product instanceof \WC_Product_Variation) {
+        $parent = wc_get_product($product->get_parent_id());
+        if ($parent && method_exists($parent, 'get_global_unique_id')) {
+          $gtin = (string)$parent->get_global_unique_id();
+        }
+      }
+      if ($gtin !== '') {
+        $result['gtin'] = $gtin;
+      }
+    }
+
     return $result;
   }
 
@@ -253,6 +269,7 @@ class DataMapperService
         'amount' => $this->mapAmount($productData, $value, $cart_item),
         'productId' => (string)($productData[$value] ?? ''),
         'hsCode' => $productData[$value] ?? '',
+        'manufacturerProductId' => $this->mapMeta($product, $value, $productData, $cart_item),
         default => $productData[$value] ?? $value,
       };
     } catch (\Exception $e) {
@@ -367,6 +384,41 @@ class DataMapperService
       return null;
     }
     return $node;
+  }
+
+  /**
+   * Resolve a product identifier from product data or meta.
+   *
+   * Looks up the configured value first in WC's get_data() array, then falls
+   * back to get_meta(). For variations, consults the parent product when the
+   * variation has no value.
+   */
+  private function mapMeta(\WC_Product $product, string $value, array $productData, array $cart_item): ?string
+  {
+    if ($value === '') {
+      return null;
+    }
+    // Try product data first.
+    $resolved = $productData[$value] ?? null;
+    if ($resolved !== null && (string)$resolved !== '') {
+      return (string)$resolved;
+    }
+    // Try product meta (custom fields).
+    $meta = $product->get_meta($value);
+    if ($meta !== '' && $meta !== false) {
+      return (string)$meta;
+    }
+    // Variation fallback: try parent product.
+    if ($product instanceof \WC_Product_Variation) {
+      $parent = wc_get_product($product->get_parent_id());
+      if ($parent) {
+        $parentMeta = $parent->get_meta($value);
+        if ($parentMeta !== '' && $parentMeta !== false) {
+          return (string)$parentMeta;
+        }
+      }
+    }
+    return null;
   }
 
   /**
