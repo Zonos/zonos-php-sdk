@@ -269,7 +269,6 @@ class DataMapperService
         'amount' => $this->mapAmount($productData, $value, $cart_item),
         'productId' => (string)($productData[$value] ?? ''),
         'hsCode' => $productData[$value] ?? '',
-        'gtin' => $this->mapMeta($product, $value, $productData, $cart_item),
         'manufacturerProductId' => $this->mapMeta($product, $value, $productData, $cart_item),
         default => $productData[$value] ?? $value,
       };
